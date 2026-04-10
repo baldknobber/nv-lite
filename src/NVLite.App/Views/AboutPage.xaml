@@ -16,8 +16,9 @@
                     BorderThickness="1" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="8">
                     <TextBlock Text="NVLite" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock Text="Version 0.1.0-alpha"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                        <Run Text="Version " /><Run Text="{x:Bind AppVersion}" />
+                    </TextBlock>
                     <TextBlock TextWrapping="Wrap"
                                Text="A lightweight, portable, zero-telemetry alternative to the official NVIDIA App. Monitor GPU &amp; CPU stats, manage drivers, and edit driver profiles." />
                 </StackPanel>
@@ -34,6 +35,17 @@
                     <TextBlock TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                Text="NVLite collects no analytics, sends no telemetry, and requires no account login. The only network calls are to NVIDIA's public driver API when you check for updates." />
+                </StackPanel>
+            </Border>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="System" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Bind RuntimeInfo}"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </Border>
 
