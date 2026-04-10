@@ -132,10 +132,99 @@ public sealed class ProfileService
     {
         var json = File.ReadAllText(filePath);
         var import = JsonSerializer.Deserialize<Dictionary<string, List<ProfileSettingInfo>>>(json);
-        if (import is null) return;
+        if (import is null || !_available) return;
 
-        // For now, just validate the import — actual DRS write will be implemented
-        // when we add edit functionality (Phase 2 polish)
-        System.Diagnostics.Debug.WriteLine($"Parsed {import.Count} profiles from JSON");
+        foreach (var (profileName, settings) in import)
+        {
+            // Create profile if it doesn't exist (skip if it does)
+            CreateProfile(profileName);
+            foreach (var setting in settings)
+            {
+                SetSetting(profileName, setting.Id, setting.RawValue);
+            }
+        }
+    }
+
+    public bool SetSetting(string profileName, uint settingId, uint value)
+    {
+        if (!_available) return false;
+        if (NvapiDrs.DRS_CreateSession is null || NvapiDrs.DRS_SetSetting is null) return false;
+
+        if (NvapiDrs.DRS_CreateSession(out var hSession) != NvapiDrs.NVAPI_OK) return false;
+        try
+        {
+            if (NvapiDrs.DRS_LoadSettings is null || NvapiDrs.DRS_LoadSettings(hSession) != NvapiDrs.NVAPI_OK) return false;
+            if (NvapiDrs.DRS_FindProfileByName is null) return false;
+            if (NvapiDrs.DRS_FindProfileByName(hSession, profileName, out var hProfile) != NvapiDrs.NVAPI_OK) return false;
+
+            var setting = new NVDRS_SETTING();
+            setting.version = (uint)Marshal.SizeOf<NVDRS_SETTING>() | (1 << 16);
+            setting.settingId = settingId;
+            setting.settingType = NvapiDrs.NVDRS_DWORD_TYPE;
+            setting.currentValue = value;
+
+            if (NvapiDrs.DRS_SetSetting(hSession, hProfile, ref setting) != NvapiDrs.NVAPI_OK) return false;
+            if (NvapiDrs.DRS_SaveSettings is null || NvapiDrs.DRS_SaveSettings(hSession) != NvapiDrs.NVAPI_OK) return false;
+
+            return true;
+        }
+        finally
+        {
+            NvapiDrs.DRS_DestroySession?.Invoke(hSession);
+        }
+    }
+
+    public bool CreateProfile(string profileName)
+    {
+        if (!_available) return false;
+        if (NvapiDrs.DRS_CreateSession is null || NvapiDrs.DRS_CreateProfile is null) return false;
+
+        if (NvapiDrs.DRS_CreateSession(out var hSession) != NvapiDrs.NVAPI_OK) return false;
+        try
+        {
+            if (NvapiDrs.DRS_LoadSettings is null || NvapiDrs.DRS_LoadSettings(hSession) != NvapiDrs.NVAPI_OK) return false;
+
+            // Check if profile already exists
+            if (NvapiDrs.DRS_FindProfileByName is not null
+                && NvapiDrs.DRS_FindProfileByName(hSession, profileName, out _) == NvapiDrs.NVAPI_OK)
+                return true; // Already exists
+
+            var profile = new NVDRS_PROFILE();
+            profile.version = (uint)Marshal.SizeOf<NVDRS_PROFILE>() | (1 << 16);
+            profile.profileName = profileName;
+            profile.isPredefined = 0;
+
+            if (NvapiDrs.DRS_CreateProfile(hSession, ref profile, out _) != NvapiDrs.NVAPI_OK) return false;
+            if (NvapiDrs.DRS_SaveSettings is null || NvapiDrs.DRS_SaveSettings(hSession) != NvapiDrs.NVAPI_OK) return false;
+
+            return true;
+        }
+        finally
+        {
+            NvapiDrs.DRS_DestroySession?.Invoke(hSession);
+        }
+    }
+
+    public bool DeleteProfile(string profileName)
+    {
+        if (!_available) return false;
+        if (NvapiDrs.DRS_CreateSession is null || NvapiDrs.DRS_DeleteProfile is null) return false;
+
+        if (NvapiDrs.DRS_CreateSession(out var hSession) != NvapiDrs.NVAPI_OK) return false;
+        try
+        {
+            if (NvapiDrs.DRS_LoadSettings is null || NvapiDrs.DRS_LoadSettings(hSession) != NvapiDrs.NVAPI_OK) return false;
+            if (NvapiDrs.DRS_FindProfileByName is null) return false;
+            if (NvapiDrs.DRS_FindProfileByName(hSession, profileName, out var hProfile) != NvapiDrs.NVAPI_OK) return false;
+
+            if (NvapiDrs.DRS_DeleteProfile(hSession, hProfile) != NvapiDrs.NVAPI_OK) return false;
+            if (NvapiDrs.DRS_SaveSettings is null || NvapiDrs.DRS_SaveSettings(hSession) != NvapiDrs.NVAPI_OK) return false;
+
+            return true;
+        }
+        finally
+        {
+            NvapiDrs.DRS_DestroySession?.Invoke(hSession);
+        }
     }
 }

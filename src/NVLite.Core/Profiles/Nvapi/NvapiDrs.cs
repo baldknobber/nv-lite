@@ -40,6 +40,8 @@ internal static class NvapiDrs
     private const uint NvAPI_DRS_SetSetting_ID = 0x577DD202;
     private const uint NvAPI_DRS_FindProfileByName_ID = 0x7E4A9A0B;
     private const uint NvAPI_DRS_EnumAvailableSettingIds_ID = 0xF020614A;
+    private const uint NvAPI_DRS_CreateProfile_ID = 0xCC176068;
+    private const uint NvAPI_DRS_DeleteProfile_ID = 0x17093206;
 
     [DllImport("nvapi64.dll", EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr QueryInterface(uint id);
@@ -78,6 +80,15 @@ internal static class NvapiDrs
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate int NvAPI_DRS_FindProfileByNameDelegate(IntPtr hSession, [MarshalAs(UnmanagedType.LPWStr)] string profileName, out IntPtr hProfile);
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_SetSettingDelegate(IntPtr hSession, IntPtr hProfile, ref NVDRS_SETTING setting);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_CreateProfileDelegate(IntPtr hSession, ref NVDRS_PROFILE profileInfo, out IntPtr hProfile);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_DeleteProfileDelegate(IntPtr hSession, IntPtr hProfile);
+
     // Function pointers (resolved at runtime)
     internal static NvAPI_InitializeDelegate? Initialize;
     internal static NvAPI_UnloadDelegate? Unload;
@@ -90,6 +101,9 @@ internal static class NvapiDrs
     internal static NvAPI_DRS_GetBaseProfileDelegate? DRS_GetBaseProfile;
     internal static NvAPI_DRS_EnumSettingsDelegate? DRS_EnumSettings;
     internal static NvAPI_DRS_FindProfileByNameDelegate? DRS_FindProfileByName;
+    internal static NvAPI_DRS_SetSettingDelegate? DRS_SetSetting;
+    internal static NvAPI_DRS_CreateProfileDelegate? DRS_CreateProfile;
+    internal static NvAPI_DRS_DeleteProfileDelegate? DRS_DeleteProfile;
 
     private static bool _initialized;
 
@@ -115,6 +129,9 @@ internal static class NvapiDrs
             DRS_GetBaseProfile = GetDelegate<NvAPI_DRS_GetBaseProfileDelegate>(NvAPI_DRS_GetBaseProfile_ID);
             DRS_EnumSettings = GetDelegate<NvAPI_DRS_EnumSettingsDelegate>(NvAPI_DRS_EnumSettings_ID);
             DRS_FindProfileByName = GetDelegate<NvAPI_DRS_FindProfileByNameDelegate>(NvAPI_DRS_FindProfileByName_ID);
+            DRS_SetSetting = GetDelegate<NvAPI_DRS_SetSettingDelegate>(NvAPI_DRS_SetSetting_ID);
+            DRS_CreateProfile = GetDelegate<NvAPI_DRS_CreateProfileDelegate>(NvAPI_DRS_CreateProfile_ID);
+            DRS_DeleteProfile = GetDelegate<NvAPI_DRS_DeleteProfileDelegate>(NvAPI_DRS_DeleteProfile_ID);
 
             _initialized = true;
             return true;

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml.Controls;
 using NVLite.Core.Profiles;
+using Windows.Storage.Pickers;
 
 namespace NVLite.App.ViewModels;
 
@@ -15,6 +16,10 @@ public partial class ProfilesViewModel : ObservableObject
     [ObservableProperty] public partial ProfileInfo? SelectedProfile { get; set; }
     [ObservableProperty] public partial string SelectedProfileName { get; set; } = "";
     [ObservableProperty] public partial ObservableCollection<ProfileSettingInfo> SelectedProfileSettings { get; set; } = [];
+    [ObservableProperty] public partial string StatusText { get; set; } = "";
+    [ObservableProperty] public partial bool HasUnsavedChanges { get; set; }
+
+    private readonly Dictionary<uint, uint> _pendingChanges = [];
 
     partial void OnSelectedProfileChanged(ProfileInfo? value)
     {
@@ -22,10 +27,14 @@ public partial class ProfilesViewModel : ObservableObject
         {
             SelectedProfileName = "";
             SelectedProfileSettings.Clear();
+            _pendingChanges.Clear();
+            HasUnsavedChanges = false;
             return;
         }
 
         SelectedProfileName = value.Name;
+        _pendingChanges.Clear();
+        HasUnsavedChanges = false;
         var settings = _profileService.GetProfileSettings(value.Name);
         SelectedProfileSettings = new ObservableCollection<ProfileSettingInfo>(settings);
     }
@@ -34,12 +43,20 @@ public partial class ProfilesViewModel : ObservableObject
     {
         try
         {
+            StatusText = "Loading profiles...";
             _allProfiles = await Task.Run(() => _profileService.GetAllProfiles());
+
+            // Sort: custom profiles first, then predefined, both alphabetical
+            _allProfiles = [.. _allProfiles
+                .OrderBy(p => p.IsPredefined)
+                .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)];
+
             FilteredProfiles = new ObservableCollection<ProfileInfo>(_allProfiles);
+            StatusText = $"{_allProfiles.Count} profiles loaded";
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to load profiles: {ex.Message}");
+            StatusText = $"Failed to load profiles: {ex.Message}";
         }
     }
 
@@ -61,20 +78,99 @@ public partial class ProfilesViewModel : ObservableObject
         }
     }
 
+    public void StageSettingChange(uint settingId, uint newValue)
+    {
+        _pendingChanges[settingId] = newValue;
+        HasUnsavedChanges = _pendingChanges.Count > 0;
+    }
+
+    [RelayCommand]
+    private async Task SaveChangesAsync()
+    {
+        if (SelectedProfile is null || _pendingChanges.Count == 0) return;
+
+        var profileName = SelectedProfile.Name;
+        var failed = 0;
+        await Task.Run(() =>
+        {
+            foreach (var (settingId, value) in _pendingChanges)
+            {
+                if (!_profileService.SetSetting(profileName, settingId, value))
+                    failed++;
+            }
+        });
+
+        _pendingChanges.Clear();
+        HasUnsavedChanges = false;
+
+        if (failed > 0)
+            StatusText = $"Saved with {failed} error(s)";
+        else
+            StatusText = "Changes saved";
+
+        // Refresh settings display
+        OnSelectedProfileChanged(SelectedProfile);
+    }
+
+    [RelayCommand]
+    private async Task CreateProfileAsync(string? profileName)
+    {
+        if (string.IsNullOrWhiteSpace(profileName)) return;
+
+        var success = await Task.Run(() => _profileService.CreateProfile(profileName));
+        if (success)
+        {
+            StatusText = $"Created profile: {profileName}";
+            await LoadProfilesAsync();
+        }
+        else
+        {
+            StatusText = "Failed to create profile (NVAPI unavailable or error)";
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteProfileAsync()
+    {
+        if (SelectedProfile is null || SelectedProfile.IsPredefined) return;
+
+        var name = SelectedProfile.Name;
+        var success = await Task.Run(() => _profileService.DeleteProfile(name));
+        if (success)
+        {
+            StatusText = $"Deleted profile: {name}";
+            SelectedProfile = null;
+            await LoadProfilesAsync();
+        }
+        else
+        {
+            StatusText = "Failed to delete profile";
+        }
+    }
+
     [RelayCommand]
     private async Task ExportAsync()
     {
         if (_allProfiles.Count == 0) return;
         try
         {
-            var path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "nvlite-profiles.json");
-            await Task.Run(() => _profileService.ExportProfilesToJson(path));
+            var picker = new FileSavePicker();
+            picker.SuggestedStartLocation = PickerLocationId.Desktop;
+            picker.SuggestedFileName = "nvlite-profiles";
+            picker.FileTypeChoices.Add("JSON", [".json"]);
+
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+            var file = await picker.PickSaveFileAsync();
+            if (file is null) return;
+
+            await Task.Run(() => _profileService.ExportProfilesToJson(file.Path));
+            StatusText = $"Exported to {file.Name}";
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Export failed: {ex.Message}");
+            StatusText = $"Export failed: {ex.Message}";
         }
     }
 
@@ -83,16 +179,23 @@ public partial class ProfilesViewModel : ObservableObject
     {
         try
         {
-            var path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "nvlite-profiles.json");
-            if (!File.Exists(path)) return;
-            await Task.Run(() => _profileService.ImportProfilesFromJson(path));
+            var picker = new FileOpenPicker();
+            picker.SuggestedStartLocation = PickerLocationId.Desktop;
+            picker.FileTypeFilter.Add(".json");
+
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+            var file = await picker.PickSingleFileAsync();
+            if (file is null) return;
+
+            await Task.Run(() => _profileService.ImportProfilesFromJson(file.Path));
+            StatusText = $"Imported from {file.Name}";
             await LoadProfilesAsync();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Import failed: {ex.Message}");
+            StatusText = $"Import failed: {ex.Message}";
         }
     }
 }
