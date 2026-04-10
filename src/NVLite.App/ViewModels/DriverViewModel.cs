@@ -182,7 +182,7 @@ public partial class DriverViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void LaunchInstaller()
+    private async Task LaunchInstallerAsync()
     {
         if (_downloadedFilePath is null || !File.Exists(_downloadedFilePath))
         {
@@ -193,7 +193,10 @@ public partial class DriverViewModel : ObservableObject
         try
         {
             if (ClearShaderCache)
-                DriverDownloader.ClearShaderCache();
+            {
+                StatusText = "Clearing shader cache...";
+                await DriverDownloader.ClearShaderCacheAsync();
+            }
 
             _downloader.LaunchInstaller(_downloadedFilePath, CleanInstall);
             StatusText = "Installer launched.";

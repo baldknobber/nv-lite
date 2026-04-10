@@ -4,7 +4,10 @@ namespace NVLite.Core.Drivers;
 
 public sealed class DriverDownloader
 {
-    private static readonly HttpClient HttpClient = new();
+    private static readonly HttpClient HttpClient = new()
+    {
+        Timeout = TimeSpan.FromHours(2), // Large driver downloads can take a while
+    };
 
     private static readonly string[] AllowedDownloadHosts =
     [
@@ -32,24 +35,34 @@ public sealed class DriverDownloader
 
         var filePath = Path.Combine(downloadsFolder, fileName);
 
-        using var response = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var response = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct)
+            .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var totalBytes = response.Content.Headers.ContentLength ?? -1;
         long downloadedBytes = 0;
+        double lastReportedPercent = -1;
 
-        await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
-        await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+        await using var contentStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
 
-        var buffer = new byte[8192];
+        var buffer = new byte[81920]; // 80KB buffer instead of 8KB — fewer iterations
         int bytesRead;
-        while ((bytesRead = await contentStream.ReadAsync(buffer, ct)) > 0)
+        while ((bytesRead = await contentStream.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
         {
-            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct).ConfigureAwait(false);
             downloadedBytes += bytesRead;
 
+            // Throttle progress reports to ~1% increments to avoid flooding the UI thread
             if (totalBytes > 0)
-                progress?.Report((double)downloadedBytes / totalBytes);
+            {
+                var percent = Math.Floor((double)downloadedBytes / totalBytes * 100);
+                if (percent > lastReportedPercent)
+                {
+                    lastReportedPercent = percent;
+                    progress?.Report((double)downloadedBytes / totalBytes);
+                }
+            }
         }
 
         progress?.Report(1.0);
@@ -80,24 +93,27 @@ public sealed class DriverDownloader
         });
     }
 
-    public static void ClearShaderCache()
+    public static async Task ClearShaderCacheAsync()
     {
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var cachePaths = new[]
+        await Task.Run(() =>
         {
-            Path.Combine(localAppData, "NVIDIA", "DXCache"),
-            Path.Combine(localAppData, "NVIDIA", "GLCache"),
-        };
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var cachePaths = new[]
+            {
+                Path.Combine(localAppData, "NVIDIA", "DXCache"),
+                Path.Combine(localAppData, "NVIDIA", "GLCache"),
+            };
 
-        foreach (var path in cachePaths)
-        {
-            if (!Directory.Exists(path)) continue;
+            foreach (var path in cachePaths)
+            {
+                if (!Directory.Exists(path)) continue;
 
-            // Skip if the path is a symlink/reparse point to prevent symlink attacks
-            var dirInfo = new DirectoryInfo(path);
-            if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
+                // Skip if the path is a symlink/reparse point to prevent symlink attacks
+                var dirInfo = new DirectoryInfo(path);
+                if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
 
-            try { Directory.Delete(path, recursive: true); } catch { /* Best effort */ }
-        }
+                try { Directory.Delete(path, recursive: true); } catch { /* Best effort */ }
+            }
+        }).ConfigureAwait(false);
     }
 }
