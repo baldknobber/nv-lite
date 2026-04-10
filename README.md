@@ -1,6 +1,6 @@
 # NVLite
 
-A lightweight, portable, zero-telemetry alternative to the official NVIDIA App. Monitor your GPU and CPU in real time, manage drivers, and tweak key NVIDIA driver settings — without the bloat.
+A portable, open-source, zero-telemetry alternative to the official NVIDIA App. Monitor your GPU and CPU in real time, manage drivers, and tweak key NVIDIA driver settings — no installer, no background services, no account required.
 
 > **Status:** Beta (v0.8.x) — core features working, actively developed.
 

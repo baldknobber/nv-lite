@@ -5,6 +5,7 @@ using NVLite.App.Views;
 using Windows.Graphics;
 using H.NotifyIcon;
 using CommunityToolkit.Mvvm.Input;
+using System.Runtime.InteropServices;
 
 namespace NVLite.App;
 
@@ -13,13 +14,19 @@ public sealed partial class MainWindow : Window
     private TaskbarIcon? _trayIcon;
     private bool _forceClose;
 
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint LoadImage(nint hInst, nint name, uint type, int cx, int cy, uint fuLoad);
+
+    [DllImport("kernel32.dll")]
+    private static extern nint GetModuleHandle(string? lpModuleName);
+
     public MainWindow()
     {
         InitializeComponent();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        AppWindow.SetIcon("Assets/AppIcon.ico");
+        SetWindowIcon();
 
         RestoreWindowState();
 
@@ -30,6 +37,30 @@ public sealed partial class MainWindow : Window
         NavView.SelectedItem = NavView.MenuItems[0];
 
         Closed += MainWindow_Closed;
+    }
+
+    private void SetWindowIcon()
+    {
+        // Load the icon embedded in the exe by ApplicationIcon (resource ID 32512 = IDI_APPLICATION, 
+        // but .NET embeds ApplicationIcon as resource ID 32512 which is the main icon).
+        // Try the loose file first (works in Debug), fall back to embedded exe resource.
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+        if (File.Exists(iconPath))
+        {
+            AppWindow.SetIcon(iconPath);
+        }
+        else
+        {
+            // Load icon from exe's embedded Win32 resources (set by ApplicationIcon in csproj)
+            const uint IMAGE_ICON = 1;
+            const uint LR_DEFAULTSIZE = 0x00000040;
+            nint hIcon = LoadImage(GetModuleHandle(null), 32512, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE);
+            if (hIcon != 0)
+            {
+                var iconId = Microsoft.UI.Win32Interop.GetIconIdFromIcon(hIcon);
+                AppWindow.SetIcon(iconId);
+            }
+        }
     }
 
     public void InitializeTrayIcon()
