@@ -20,4 +20,7 @@ public sealed class AppSettings
 
     // Auto driver check (0 = disabled)
     public int DriverCheckIntervalHours { get; set; }
+
+    // Temperature display
+    public bool UseFahrenheit { get; set; }
 }

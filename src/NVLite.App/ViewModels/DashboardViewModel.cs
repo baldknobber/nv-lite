@@ -97,6 +97,18 @@ public partial class DashboardViewModel : ObservableObject
         };
     }
 
+    /// <summary>Format a temperature with optional F/C conversion.</summary>
+    private static string FormatTemp(float? celsius)
+    {
+        if (celsius is null) return "--";
+        if (App.Settings.Settings.UseFahrenheit)
+            return (celsius.Value * 9f / 5f + 32f).ToString("F0");
+        return celsius.Value.ToString("F0");
+    }
+
+    /// <summary>Temperature unit suffix based on settings.</summary>
+    [ObservableProperty] public partial string TempUnit { get; set; } = "°C";
+
     public async Task StartMonitoringAsync()
     {
         _cts?.Cancel();
@@ -113,11 +125,13 @@ public partial class DashboardViewModel : ObservableObject
             using var timer = new PeriodicTimer(interval);
             while (await timer.WaitForNextTickAsync(_cts.Token))
             {
+                TempUnit = App.Settings.Settings.UseFahrenheit ? "°F" : "°C";
+
                 var gpu = _monitor.GetGpuInfo();
                 if (gpu is not null)
                 {
                     GpuName = gpu.Name;
-                    GpuTemp = gpu.Temperature?.ToString("F0") ?? "--";
+                    GpuTemp = FormatTemp(gpu.Temperature);
                     GpuTempColor = GetTempBrush(gpu.Temperature);
                     GpuCoreClock = gpu.CoreClock?.ToString("F0") ?? "--";
                     GpuMemClock = gpu.MemoryClock?.ToString("F0") ?? "--";
@@ -125,26 +139,28 @@ public partial class DashboardViewModel : ObservableObject
                     GpuUsage = gpu.Usage ?? 0;
                     GpuMemUsed = gpu.MemoryUsed ?? 0;
                     GpuMemTotal = gpu.MemoryTotal > 0 ? gpu.MemoryTotal ?? 1 : 1;
-                    GpuFanSpeed = gpu.FanSpeed?.ToString("F0") ?? "--";
+
+                    // Fan — laptops often don't expose fan RPM
+                    var isLaptop = gpu.Name.Contains("Laptop", StringComparison.OrdinalIgnoreCase)
+                                || gpu.Name.Contains("Mobile", StringComparison.OrdinalIgnoreCase);
+                    GpuFanSpeed = gpu.FanSpeed?.ToString("F0") ?? (isLaptop ? "N/A" : "--");
+                    GpuFanPercent = gpu.FanPercent?.ToString("F0") ?? (isLaptop ? "N/A" : "--");
 
                     // Detail fields
-                    GpuHotSpotTemp = gpu.HotSpotTemperature?.ToString("F0") ?? "--";
-                    GpuMemJunctionTemp = gpu.MemoryJunctionTemperature?.ToString("F0") ?? "--";
+                    GpuHotSpotTemp = FormatTemp(gpu.HotSpotTemperature);
+                    GpuMemJunctionTemp = FormatTemp(gpu.MemoryJunctionTemperature);
                     GpuVoltage = gpu.Voltage?.ToString("F3") ?? "--";
                     GpuPowerLimit = gpu.PowerLimit?.ToString("F1") ?? "--";
                     GpuMemCtrlLoad = gpu.MemoryControllerLoad?.ToString("F0") ?? "--";
                     GpuVideoLoad = gpu.VideoEngineLoad?.ToString("F0") ?? "--";
-                    GpuFanPercent = gpu.FanPercent?.ToString("F0") ?? "--";
-                    HasGpuDetails = gpu.HotSpotTemperature is not null
-                                 || gpu.Voltage is not null
-                                 || gpu.MemoryControllerLoad is not null;
+                    HasGpuDetails = true;
                 }
 
                 var cpu = _monitor.GetCpuInfo();
                 if (cpu is not null)
                 {
                     CpuName = cpu.Name;
-                    CpuTemp = cpu.PackageTemperature?.ToString("F0") ?? "--";
+                    CpuTemp = FormatTemp(cpu.PackageTemperature);
                     CpuTempColor = GetTempBrush(cpu.PackageTemperature);
                     CpuUsage = cpu.Usage ?? 0;
                     CpuFrequency = cpu.Frequency?.ToString("F0") ?? "--";
@@ -258,22 +274,33 @@ public partial class CoreDetailViewModel : ObservableObject
     [ObservableProperty] public partial string Temperature { get; set; }
     [ObservableProperty] public partial string Clock { get; set; }
     [ObservableProperty] public partial double Load { get; set; }
+    [ObservableProperty] public partial string TempUnit { get; set; }
     public string LoadText => Load.ToString("F0");
 
     public CoreDetailViewModel(CoreDetail core)
     {
         Name = core.Name;
-        Temperature = core.Temperature?.ToString("F0") ?? "--";
+        Temperature = FormatCoreTemp(core.Temperature);
         Clock = core.Clock?.ToString("F0") ?? "--";
         Load = core.Load ?? 0;
+        TempUnit = App.Settings.Settings.UseFahrenheit ? "°F" : "°C";
     }
 
     public void Update(CoreDetail core)
     {
         Name = core.Name;
-        Temperature = core.Temperature?.ToString("F0") ?? "--";
+        Temperature = FormatCoreTemp(core.Temperature);
         Clock = core.Clock?.ToString("F0") ?? "--";
         Load = core.Load ?? 0;
+        TempUnit = App.Settings.Settings.UseFahrenheit ? "°F" : "°C";
         OnPropertyChanged(nameof(LoadText));
+    }
+
+    private static string FormatCoreTemp(float? celsius)
+    {
+        if (celsius is null) return "--";
+        if (App.Settings.Settings.UseFahrenheit)
+            return (celsius.Value * 9f / 5f + 32f).ToString("F0");
+        return celsius.Value.ToString("F0");
     }
 }

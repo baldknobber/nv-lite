@@ -58,6 +58,8 @@
                     </StackPanel>
                     <ToggleSwitch Header="GPU temperature alerts"
                                   IsOn="{x:Bind ViewModel.EnableTempAlerts, Mode=TwoWay}" />
+                    <ToggleSwitch Header="Show temperatures in Fahrenheit"
+                                  IsOn="{x:Bind ViewModel.UseFahrenheit, Mode=TwoWay}" />
                     <StackPanel Orientation="Horizontal" Spacing="12"
                                 Visibility="{x:Bind ViewModel.EnableTempAlerts, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="Alert threshold (°C)"

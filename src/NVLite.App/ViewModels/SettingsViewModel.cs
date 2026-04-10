@@ -32,6 +32,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial int DriverCheckIntervalHours { get; set; }
 
+    [ObservableProperty]
+    public partial bool UseFahrenheit { get; set; }
+
     public SettingsViewModel(SettingsService settingsService, Action<string> applyTheme)
     {
         _settingsService = settingsService;
@@ -51,6 +54,7 @@ public partial class SettingsViewModel : ObservableObject
         EnableTempAlerts = settings.EnableTempAlerts;
         GpuTempAlertThreshold = settings.GpuTempAlertThreshold;
         DriverCheckIntervalHours = settings.DriverCheckIntervalHours;
+        UseFahrenheit = settings.UseFahrenheit;
     }
 
     partial void OnSelectedThemeIndexChanged(int value)
@@ -110,6 +114,12 @@ public partial class SettingsViewModel : ObservableObject
     {
         var clamped = Math.Clamp(value, 0, 168);
         _settingsService.Settings.DriverCheckIntervalHours = clamped;
+        _settingsService.Save();
+    }
+
+    partial void OnUseFahrenheitChanged(bool value)
+    {
+        _settingsService.Settings.UseFahrenheit = value;
         _settingsService.Save();
     }
 }

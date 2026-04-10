@@ -123,20 +123,20 @@ public sealed class HardwareMonitorService : IDisposable
             return new GpuInfo
             {
                 Name = hardware.Name,
-                Temperature = temp,
-                HotSpotTemperature = hotSpot,
-                MemoryJunctionTemperature = memJunction,
-                CoreClock = coreClock,
-                MemoryClock = memClock,
+                Temperature = Positive(temp),
+                HotSpotTemperature = Positive(hotSpot),
+                MemoryJunctionTemperature = Positive(memJunction),
+                CoreClock = Positive(coreClock),
+                MemoryClock = Positive(memClock),
                 Usage = usage,
                 MemoryControllerLoad = memCtrlLoad,
                 VideoEngineLoad = videoLoad,
-                PowerDraw = power,
-                PowerLimit = powerLimit,
-                Voltage = voltage,
+                PowerDraw = Positive(power),
+                PowerLimit = Positive(powerLimit),
+                Voltage = Positive(voltage),
                 MemoryUsed = memUsed,
                 MemoryTotal = memTotal,
-                FanSpeed = fanSpeed,
+                FanSpeed = Positive(fanSpeed),
                 FanPercent = fanPercent,
             };
         }
@@ -245,19 +245,19 @@ public sealed class HardwareMonitorService : IDisposable
             var cores = coreIndices.Select(i => new CoreDetail
             {
                 Name = $"Core #{i}",
-                Temperature = coreTemps.GetValueOrDefault(i),
-                Clock = coreClocks.GetValueOrDefault(i),
-                Load = coreLoads.GetValueOrDefault(i),
+                Temperature = coreTemps.TryGetValue(i, out var ct) && ct > 0 ? ct : null,
+                Clock = coreClocks.TryGetValue(i, out var cc) && cc > 0 ? cc : null,
+                Load = coreLoads.TryGetValue(i, out var cl) ? cl : null,
             }).ToList();
 
             return new CpuInfo
             {
                 Name = hardware.Name,
-                PackageTemperature = packageTemp,
+                PackageTemperature = Positive(packageTemp),
                 Usage = usage,
-                Frequency = freq,
-                Voltage = voltage,
-                PowerDraw = power,
+                Frequency = Positive(freq),
+                Voltage = Positive(voltage),
+                PowerDraw = Positive(power),
                 CoreCount = cores.Count > 0 ? cores.Count : Environment.ProcessorCount,
                 ThreadCount = Environment.ProcessorCount,
                 Cores = cores,
@@ -306,13 +306,16 @@ public sealed class HardwareMonitorService : IDisposable
                         var version = adapterKey?.GetValue("DriverVersion") as string;
                         if (version is not null)
                         {
-                            // Convert Windows driver version (e.g. 32.0.15.7675) to NVIDIA format (576.75)
+                            // Convert Windows driver version (e.g. 32.0.15.9579) to NVIDIA format (595.79)
                             var parts = version.Split('.');
                             if (parts.Length >= 4)
                             {
-                                var last5 = parts[2][^2..] + parts[3];
-                                if (last5.Length == 5)
+                                var combined = parts[2] + parts[3];
+                                if (combined.Length >= 5)
+                                {
+                                    var last5 = combined[^5..];
                                     return $"{last5[..3]}.{last5[3..]}";
+                                }
                             }
                             return version;
                         }
@@ -327,4 +330,7 @@ public sealed class HardwareMonitorService : IDisposable
     }
 
     public void Dispose() => Close();
+
+    /// <summary>Returns null if the value is null or &lt;= 0 (physically impossible for temps, clocks, voltage).</summary>
+    private static float? Positive(float? v) => v is > 0 ? v : null;
 }

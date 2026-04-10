@@ -67,7 +67,7 @@
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}"
                                            Foreground="{x:Bind ViewModel.GpuTempColor, Mode=OneWay}">
-                                    <Run Text="{x:Bind ViewModel.GpuTemp, Mode=OneWay}" /><Run Text="°C" />
+                                    <Run Text="{x:Bind ViewModel.GpuTemp, Mode=OneWay}" /><Run Text="{x:Bind ViewModel.TempUnit, Mode=OneWay}" />
                                 </TextBlock>
                             </StackPanel>
 
@@ -158,7 +158,7 @@
                                     <TextBlock Text="Hot Spot" Style="{StaticResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     <TextBlock>
-                                        <Run Text="{x:Bind ViewModel.GpuHotSpotTemp, Mode=OneWay}" /><Run Text="°C" />
+                                        <Run Text="{x:Bind ViewModel.GpuHotSpotTemp, Mode=OneWay}" /><Run Text="{x:Bind ViewModel.TempUnit, Mode=OneWay}" />
                                     </TextBlock>
                                 </StackPanel>
 
@@ -166,7 +166,7 @@
                                     <TextBlock Text="Memory Junction" Style="{StaticResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     <TextBlock>
-                                        <Run Text="{x:Bind ViewModel.GpuMemJunctionTemp, Mode=OneWay}" /><Run Text="°C" />
+                                        <Run Text="{x:Bind ViewModel.GpuMemJunctionTemp, Mode=OneWay}" /><Run Text="{x:Bind ViewModel.TempUnit, Mode=OneWay}" />
                                     </TextBlock>
                                 </StackPanel>
 
@@ -236,7 +236,7 @@
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}"
                                            Foreground="{x:Bind ViewModel.CpuTempColor, Mode=OneWay}">
-                                    <Run Text="{x:Bind ViewModel.CpuTemp, Mode=OneWay}" /><Run Text="°C" />
+                                    <Run Text="{x:Bind ViewModel.CpuTemp, Mode=OneWay}" /><Run Text="{x:Bind ViewModel.TempUnit, Mode=OneWay}" />
                                 </TextBlock>
                             </StackPanel>
 
@@ -306,7 +306,7 @@
                                                            Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" />
                                                 <TextBlock Grid.Column="1" Style="{StaticResource CaptionTextBlockStyle}"
                                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}">
-                                                    <Run Text="{x:Bind Temperature, Mode=OneWay}" /><Run Text="°C" />
+                                                    <Run Text="{x:Bind Temperature, Mode=OneWay}" /><Run Text="{x:Bind TempUnit, Mode=OneWay}" />
                                                 </TextBlock>
                                                 <TextBlock Grid.Column="2" Style="{StaticResource CaptionTextBlockStyle}"
                                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}">
