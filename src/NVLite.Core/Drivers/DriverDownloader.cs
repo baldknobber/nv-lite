@@ -69,7 +69,47 @@ public sealed class DriverDownloader
         return filePath;
     }
 
-    public void LaunchInstaller(string installerPath, bool cleanInstall = false)
+    /// <summary>
+    /// Launches the NVIDIA installer with its own UI (Express mode).
+    /// </summary>
+    public void LaunchExpressInstaller(string installerPath, bool cleanInstall = false)
+    {
+        var canonicalPath = ValidateInstallerPath(installerPath);
+        var args = cleanInstall ? "-clean -noreboot" : "-noreboot";
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = canonicalPath,
+            Arguments = args,
+            UseShellExecute = true,
+        });
+    }
+
+    /// <summary>
+    /// Runs the NVIDIA installer silently (Minimal mode) and waits for completion.
+    /// Returns the exit code: 0 = success, 1 = reboot needed (still success), 2 = failure.
+    /// </summary>
+    public async Task<int> InstallSilentAsync(string installerPath, bool cleanInstall = false,
+        CancellationToken ct = default)
+    {
+        var canonicalPath = ValidateInstallerPath(installerPath);
+
+        var args = "-s -noreboot -noeula";
+        if (cleanInstall)
+            args += " -clean";
+
+        var process = Process.Start(new ProcessStartInfo
+        {
+            FileName = canonicalPath,
+            Arguments = args,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        }) ?? throw new InvalidOperationException("Failed to start installer process.");
+
+        await process.WaitForExitAsync(ct).ConfigureAwait(false);
+        return process.ExitCode;
+    }
+
+    private static string ValidateInstallerPath(string installerPath)
     {
         if (!File.Exists(installerPath))
             throw new FileNotFoundException("Installer file not found.", installerPath);
@@ -77,20 +117,13 @@ public sealed class DriverDownloader
         if (!installerPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Installer must be an .exe file.");
 
-        // Ensure the installer is within the user's Downloads folder
         var downloadsFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
         var canonicalPath = Path.GetFullPath(installerPath);
         if (!canonicalPath.StartsWith(downloadsFolder, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Installer must be located in the Downloads folder.");
 
-        var args = cleanInstall ? "-clean" : "";
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = canonicalPath,
-            Arguments = args,
-            UseShellExecute = true,
-        });
+        return canonicalPath;
     }
 
     public static async Task ClearShaderCacheAsync()

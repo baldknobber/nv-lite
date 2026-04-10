@@ -20,86 +20,137 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="16" MaxWidth="700" HorizontalAlignment="Left">
 
-                <!-- Installed Driver Info -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="8" Padding="20">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Installed Driver" Style="{StaticResource SubtitleTextBlockStyle}" />
-                        <TextBlock>
-                            <Run Text="Version: " Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <Run Text="{x:Bind ViewModel.InstalledVersion, Mode=OneWay}" FontWeight="SemiBold" />
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
-
-                <!-- Latest Driver Info -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="8" Padding="20">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Latest Available" Style="{StaticResource SubtitleTextBlockStyle}" />
-                        <TextBlock>
-                            <Run Text="Version: " Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <Run Text="{x:Bind ViewModel.LatestVersion, Mode=OneWay}" FontWeight="SemiBold" />
-                        </TextBlock>
-                        <TextBlock Text="{x:Bind ViewModel.UpdateStatus, Mode=OneWay}"
-                                   Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
-                    </StackPanel>
-                </Border>
-
-                <!-- Actions -->
+                <!-- Driver Status (merged: installed + latest) -->
                 <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="20">
                     <StackPanel Spacing="12">
-                        <TextBlock Text="Update Driver" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBlock Text="Driver Status" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <Grid ColumnSpacing="24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Installed" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Style="{StaticResource CaptionTextBlockStyle}" />
+                                <TextBlock Text="{x:Bind ViewModel.InstalledVersion, Mode=OneWay}"
+                                           FontWeight="SemiBold" FontSize="18" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Latest Available" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Style="{StaticResource CaptionTextBlockStyle}" />
+                                <TextBlock Text="{x:Bind ViewModel.LatestVersion, Mode=OneWay}"
+                                           FontWeight="SemiBold" FontSize="18" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Text="{x:Bind ViewModel.UpdateStatus, Mode=OneWay}"
+                                   Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                        <Button Content="Check for Updates"
+                                Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
+                                Style="{StaticResource AccentButtonStyle}" />
+                    </StackPanel>
+                </Border>
 
-                        <StackPanel Spacing="8">
-                            <Button Content="Check for Updates"
-                                    Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
+                <!-- Download & Install -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="20">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Download &amp; Install" Style="{StaticResource SubtitleTextBlockStyle}" />
+
+                        <!-- Download button (hidden while downloading or installing) -->
+                        <Button Content="Download Latest Driver"
+                                Command="{x:Bind ViewModel.DownloadDriverCommand}"
+                                Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                        <!-- Download progress -->
+                        <StackPanel Spacing="4"
+                                    Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                                             Maximum="100" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.DownloadSizeText, Mode=OneWay}"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionTextBlockStyle}" />
+                                <Button Grid.Column="2" Content="Cancel"
+                                        Command="{x:Bind ViewModel.CancelDownloadCommand}" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Downloaded file indicator -->
+                        <Border Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
+                                CornerRadius="6" Padding="12,8"
+                                Visibility="{x:Bind ViewModel.HasDownloadedDriver, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="&#xE73E;  Driver ready to install" FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="{x:Bind ViewModel.DownloadedDriverPath, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           IsTextSelectionEnabled="True" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Install options (shown when driver is downloaded) -->
+                        <StackPanel Spacing="10"
+                                    Visibility="{x:Bind ViewModel.HasDownloadedDriver, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+
+                            <!-- Install mode -->
+                            <TextBlock Text="Install Mode" FontWeight="SemiBold" Margin="0,4,0,0" />
+                            <RadioButton Content="Minimal (Recommended)"
+                                         IsChecked="{x:Bind ViewModel.UseMinimalInstall, Mode=TwoWay}"
+                                         GroupName="InstallMode">
+                                <ToolTipService.ToolTip>
+                                    <TextBlock TextWrapping="Wrap" MaxWidth="300"
+                                               Text="Silent install — driver only, no NVIDIA UI. Faster and lighter. Progress tracked in NVLite." />
+                                </ToolTipService.ToolTip>
+                            </RadioButton>
+                            <RadioButton Content="Express (NVIDIA Installer)"
+                                         GroupName="InstallMode">
+                                <ToolTipService.ToolTip>
+                                    <TextBlock TextWrapping="Wrap" MaxWidth="300"
+                                               Text="Opens the full NVIDIA installer with its own UI. Choose this if minimal install fails or you need component selection." />
+                                </ToolTipService.ToolTip>
+                            </RadioButton>
+
+                            <!-- Extra options -->
+                            <StackPanel Spacing="6" Margin="0,4,0,0">
+                                <CheckBox Content="Clean install"
+                                          IsChecked="{x:Bind ViewModel.CleanInstall, Mode=TwoWay}"
+                                          ToolTipService.ToolTip="Removes the old driver completely before installing. Resets NVIDIA settings and registry entries." />
+                                <CheckBox Content="Clear shader cache"
+                                          IsChecked="{x:Bind ViewModel.ClearShaderCache, Mode=TwoWay}"
+                                          ToolTipService.ToolTip="Deletes pre-compiled GPU shaders. Games may stutter briefly on first launch while shaders recompile." />
+                            </StackPanel>
+
+                            <!-- Install button -->
+                            <Button Content="Install Driver"
+                                    Command="{x:Bind ViewModel.LaunchInstallerCommand}"
                                     Style="{StaticResource AccentButtonStyle}" />
-
-                            <!-- Download progress area -->
-                            <StackPanel Spacing="4"
-                                        Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
-                                                 Maximum="100" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.DownloadSizeText, Mode=OneWay}"
-                                               Margin="8,0" VerticalAlignment="Center"
-                                               Style="{StaticResource CaptionTextBlockStyle}" />
-                                    <Button Grid.Column="2" Content="Cancel"
-                                            Command="{x:Bind ViewModel.CancelDownloadCommand}" />
-                                </Grid>
-                            </StackPanel>
-
-                            <StackPanel Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibility}}"
-                                        Spacing="8">
-                                <Button Content="Download Latest Driver"
-                                        Command="{x:Bind ViewModel.DownloadDriverCommand}" />
-                            </StackPanel>
                         </StackPanel>
 
-                        <!-- Install options — compact with tooltips -->
-                        <StackPanel Spacing="6" Margin="0,4,0,0">
-                            <CheckBox Content="Clean install"
-                                      IsChecked="{x:Bind ViewModel.CleanInstall, Mode=TwoWay}"
-                                      ToolTipService.ToolTip="Removes the old driver completely before installing. Resets NVIDIA Control Panel settings, PhysX, and registry entries. Use when troubleshooting or after a major version jump." />
-                            <CheckBox Content="Clear shader cache"
-                                      IsChecked="{x:Bind ViewModel.ClearShaderCache, Mode=TwoWay}"
-                                      ToolTipService.ToolTip="Deletes pre-compiled GPU shaders (~100 MB–1 GB). Games may stutter briefly on first launch while shaders recompile. Use when you see graphical glitches after a driver update." />
+                        <!-- Install progress (indeterminate) -->
+                        <StackPanel Spacing="6"
+                                    Visibility="{x:Bind ViewModel.IsInstalling, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                            <ProgressBar IsIndeterminate="True" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <Button Grid.Column="1" Content="Cancel"
+                                        Command="{x:Bind ViewModel.CancelInstallCommand}" />
+                            </Grid>
                         </StackPanel>
-
-                        <Button Content="Install Downloaded Driver"
-                                Command="{x:Bind ViewModel.LaunchInstallerCommand}"
-                                Style="{StaticResource AccentButtonStyle}"
-                                ToolTipService.ToolTip="Launches the NVIDIA installer for the driver you downloaded above." />
                     </StackPanel>
                 </Border>
 
@@ -179,9 +230,10 @@
 
                 <!-- Status -->
                 <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
-                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           TextWrapping="Wrap" />
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

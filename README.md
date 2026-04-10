@@ -18,6 +18,8 @@ A lightweight, portable, zero-telemetry alternative to the official NVIDIA App. 
 ### Driver Management
 - One-click check for latest Game Ready drivers via NVIDIA's API
 - Download with progress tracking and cancel support
+- **Minimal Install** — silent, driver-only install tracked in-app (no NVIDIA UI)
+- **Express Install** — launches NVIDIA's full installer for component selection
 - Optional clean install and shader cache clearing
 - Driver version history with release notes links
 - One-click rollback to previous driver version
@@ -38,13 +40,11 @@ A lightweight, portable, zero-telemetry alternative to the official NVIDIA App. 
 - Maximized window state persisted across sessions
 - Requires administrator privileges for full sensor access
 
-## Screenshots
-
-*Coming soon — see [Releases](https://github.com/baldknobber/nv-lite/releases) for the latest build.*
-
 ## Download
 
 See [Releases](https://github.com/baldknobber/nv-lite/releases) for the latest build.
+
+> **Note:** NVLite requires Windows 10 1809+ and must be run as administrator for full functionality.
 
 ## Build from Source
 
@@ -106,7 +106,7 @@ dotnet publish src/NVLite.App -c Release -r win-x64 --self-contained -p:PublishS
 ## How It Compares
 
 | Feature | NVLite | NVIDIA App | NVCleanstall |
-|---------|--------|------------|--------------|
+| :------ | :----: | :--------: | :----------: |
 | GPU/CPU monitoring | ✅ | ✅ (overlay) | ❌ |
 | Driver updates | ✅ | ✅ | ✅ (download only) |
 | Driver component stripping | ❌ | ❌ | ✅ |
@@ -141,6 +141,14 @@ NVLite is built on the shoulders of these excellent open-source projects:
 - **[Microsoft Windows App SDK](https://github.com/microsoft/WindowsAppSDK)** — The WinUI 3 framework.
 
 Special thanks to the NVIDIA developer community and the contributors to the open-source hardware monitoring ecosystem.
+
+## Disclaimer
+
+- **Not affiliated with NVIDIA.** NVLite is an independent, open-source project. NVIDIA, GeForce, and related trademarks are property of NVIDIA Corporation.
+- **Use at your own risk.** Driver installation modifies system-level components. While NVLite uses NVIDIA's own installer under the hood, incorrect driver versions or interrupted installs can cause display issues. The clean install option will reset your NVIDIA settings.
+- **Administrator privileges required.** NVLite needs admin access to read hardware sensors (via LibreHardwareMonitor's kernel driver) and to install drivers. The app does not collect, transmit, or store any personal data.
+- **Beta software.** This is pre-release software under active development. Expect bugs. Please [report issues](https://github.com/baldknobber/nv-lite/issues) to help improve the project.
+- **Hardware monitoring accuracy.** Sensor readings depend on LibreHardwareMonitor's kernel driver, which may not load on all systems (e.g., Secure Boot configurations). A WMI fallback is used for CPU temperature when the kernel driver is unavailable.
 
 ## Contributing
 

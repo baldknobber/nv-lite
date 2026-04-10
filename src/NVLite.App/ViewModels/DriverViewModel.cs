@@ -16,13 +16,17 @@ public partial class DriverViewModel : ObservableObject
     [ObservableProperty] public partial string UpdateStatus { get; set; } = "";
     [ObservableProperty] public partial double DownloadProgress { get; set; }
     [ObservableProperty] public partial bool IsDownloading { get; set; }
+    [ObservableProperty] public partial bool IsInstalling { get; set; }
     [ObservableProperty] public partial bool CleanInstall { get; set; }
     [ObservableProperty] public partial bool ClearShaderCache { get; set; }
+    [ObservableProperty] public partial bool UseMinimalInstall { get; set; } = true;
     [ObservableProperty] public partial string StatusText { get; set; } = "";
     [ObservableProperty] public partial string DownloadSizeText { get; set; } = "";
     [ObservableProperty] public partial bool HasVersionHistory { get; set; }
     [ObservableProperty] public partial string? RollbackVersion { get; set; }
     [ObservableProperty] public partial bool HasRollback { get; set; }
+    [ObservableProperty] public partial bool HasDownloadedDriver { get; set; }
+    [ObservableProperty] public partial string DownloadedDriverPath { get; set; } = "";
 
     public ObservableCollection<DriverReleaseInfo> VersionHistory { get; } = [];
 
@@ -30,6 +34,7 @@ public partial class DriverViewModel : ObservableObject
     private string? _downloadedFilePath;
     private string? _rollbackUrl;
     private CancellationTokenSource? _downloadCts;
+    private CancellationTokenSource? _installCts;
 
     public async Task AutoCheckAsync()
     {
@@ -140,6 +145,7 @@ public partial class DriverViewModel : ObservableObject
             _downloadCts = new CancellationTokenSource();
             IsDownloading = true;
             DownloadSizeText = "";
+            HasDownloadedDriver = false;
             StatusText = "Downloading...";
             var progress = new Progress<double>(p =>
             {
@@ -147,18 +153,22 @@ public partial class DriverViewModel : ObservableObject
                 DownloadSizeText = $"{p * 100:F0}%";
             });
             _downloadedFilePath = await _downloader.DownloadAsync(url, progress, _downloadCts.Token);
-            StatusText = $"Downloaded to {_downloadedFilePath}";
+            DownloadedDriverPath = _downloadedFilePath;
+            HasDownloadedDriver = true;
+            StatusText = "Download complete — ready to install.";
             DownloadSizeText = "Complete";
         }
         catch (OperationCanceledException)
         {
             StatusText = "Download cancelled.";
             DownloadSizeText = "";
+            HasDownloadedDriver = false;
         }
         catch (Exception ex)
         {
             StatusText = $"Download failed: {ex.Message}";
             DownloadSizeText = "";
+            HasDownloadedDriver = false;
         }
         finally
         {
@@ -198,12 +208,58 @@ public partial class DriverViewModel : ObservableObject
                 await DriverDownloader.ClearShaderCacheAsync();
             }
 
-            _downloader.LaunchInstaller(_downloadedFilePath, CleanInstall);
-            StatusText = "Installer launched.";
+            if (UseMinimalInstall)
+            {
+                _installCts = new CancellationTokenSource();
+                IsInstalling = true;
+                StatusText = "Installing driver silently — this may take a few minutes...";
+
+                var exitCode = await _downloader.InstallSilentAsync(
+                    _downloadedFilePath, CleanInstall, _installCts.Token);
+
+                if (exitCode is 0 or 1)
+                {
+                    // Re-check installed version to confirm
+                    var newVersion = _checker.GetInstalledDriverVersion();
+                    if (newVersion is not null)
+                        InstalledVersion = newVersion;
+
+                    StatusText = exitCode == 1
+                        ? $"Driver installed successfully (v{newVersion}). A reboot is recommended."
+                        : $"Driver installed successfully (v{newVersion}).";
+                    UpdateStatus = "You're up to date.";
+                    HasDownloadedDriver = false;
+                }
+                else
+                {
+                    StatusText = $"Installation failed (exit code {exitCode}). Try Express install instead.";
+                }
+            }
+            else
+            {
+                _downloader.LaunchExpressInstaller(_downloadedFilePath, CleanInstall);
+                StatusText = "NVIDIA installer launched — follow the on-screen prompts.";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "Installation cancelled.";
         }
         catch (Exception ex)
         {
-            StatusText = $"Failed to launch: {ex.Message}";
+            StatusText = $"Failed to install: {ex.Message}";
         }
+        finally
+        {
+            IsInstalling = false;
+            _installCts?.Dispose();
+            _installCts = null;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelInstall()
+    {
+        _installCts?.Cancel();
     }
 }
