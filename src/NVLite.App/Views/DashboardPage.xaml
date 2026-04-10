@@ -354,6 +354,12 @@
                                        VerticalAlignment="Center"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Button Content="Dump Sensors" Command="{x:Bind ViewModel.DumpSensorsCommand}"
+                                    ToolTipService.ToolTip="Save a raw sensor dump to your Desktop for diagnostics." />
+                            <TextBlock Text="{x:Bind ViewModel.SensorDumpStatus, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                     </Grid>
                 </Border>

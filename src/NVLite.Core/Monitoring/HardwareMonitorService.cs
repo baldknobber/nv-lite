@@ -1,4 +1,5 @@
 using LibreHardwareMonitor.Hardware;
+using System.Management;
 
 namespace NVLite.Core.Monitoring;
 
@@ -8,6 +9,7 @@ public sealed class HardwareMonitorService : IDisposable
     {
         IsCpuEnabled = true,
         IsGpuEnabled = true,
+        IsMotherboardEnabled = true,
     };
     private bool _isOpen;
 
@@ -67,26 +69,27 @@ public sealed class HardwareMonitorService : IDisposable
                         temp ??= sensor.Value;
                         break;
 
-                    // Clocks
+                    // Clocks — check Memory before Core/GPU since "GPU Memory" contains "GPU"
+                    case SensorType.Clock when name.Contains("Memory", StringComparison.OrdinalIgnoreCase):
+                        memClock ??= sensor.Value;
+                        break;
                     case SensorType.Clock when name.Contains("Core", StringComparison.OrdinalIgnoreCase)
                                             || name.Contains("GPU", StringComparison.OrdinalIgnoreCase):
                         coreClock ??= sensor.Value;
                         break;
-                    case SensorType.Clock when name.Contains("Memory", StringComparison.OrdinalIgnoreCase):
-                        memClock ??= sensor.Value;
-                        break;
 
-                    // Load
-                    case SensorType.Load when name.Contains("Core", StringComparison.OrdinalIgnoreCase)
-                                           || name.Contains("GPU", StringComparison.OrdinalIgnoreCase)
-                                           || name.Contains("D3D 3D", StringComparison.OrdinalIgnoreCase):
-                        usage ??= sensor.Value;
-                        break;
+                    // Load — check specific names before broad "Core"/"GPU" patterns
                     case SensorType.Load when name.Contains("Memory Controller", StringComparison.OrdinalIgnoreCase):
                         memCtrlLoad ??= sensor.Value;
                         break;
                     case SensorType.Load when name.Contains("Video", StringComparison.OrdinalIgnoreCase):
                         videoLoad ??= sensor.Value;
+                        break;
+                    case SensorType.Load when name.Contains("D3D 3D", StringComparison.OrdinalIgnoreCase):
+                        usage ??= sensor.Value;
+                        break;
+                    case SensorType.Load when name.Equals("GPU Core", StringComparison.OrdinalIgnoreCase):
+                        usage ??= sensor.Value;
                         break;
 
                     // Power
@@ -102,7 +105,13 @@ public sealed class HardwareMonitorService : IDisposable
                         voltage ??= sensor.Value;
                         break;
 
-                    // Memory
+                    // Memory — prefer "GPU Memory Used/Total" over "D3D Dedicated" 
+                    case SensorType.SmallData when name.StartsWith("GPU Memory Used", StringComparison.OrdinalIgnoreCase):
+                        memUsed = sensor.Value; // overwrite D3D value
+                        break;
+                    case SensorType.SmallData when name.StartsWith("GPU Memory Total", StringComparison.OrdinalIgnoreCase):
+                        memTotal = sensor.Value;
+                        break;
                     case SensorType.SmallData when name.Contains("Used", StringComparison.OrdinalIgnoreCase):
                         memUsed ??= sensor.Value;
                         break;
@@ -253,7 +262,7 @@ public sealed class HardwareMonitorService : IDisposable
             return new CpuInfo
             {
                 Name = hardware.Name,
-                PackageTemperature = Positive(packageTemp),
+                PackageTemperature = Positive(packageTemp) ?? GetWmiCpuTemp(),
                 Usage = usage,
                 Frequency = Positive(freq),
                 Voltage = Positive(voltage),
@@ -331,6 +340,54 @@ public sealed class HardwareMonitorService : IDisposable
 
     public void Dispose() => Close();
 
+    /// <summary>Fallback: read CPU temp via WMI ACPI thermal zone (works when LHM's Ring0 driver can't load).</summary>
+    private static float? GetWmiCpuTemp()
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                @"root\WMI", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+            foreach (var obj in searcher.Get())
+            {
+                var raw = Convert.ToSingle(obj["CurrentTemperature"]);
+                // WMI returns temp in tenths of Kelvin
+                var celsius = (raw - 2732f) / 10f;
+                if (celsius is > 0 and < 150)
+                    return celsius;
+            }
+        }
+        catch { /* WMI may not be available on all systems */ }
+        return null;
+    }
+
     /// <summary>Returns null if the value is null or &lt;= 0 (physically impossible for temps, clocks, voltage).</summary>
     private static float? Positive(float? v) => v is > 0 ? v : null;
+
+    /// <summary>Dumps all hardware sensors to a string for diagnostics.</summary>
+    public string DumpAllSensors()
+    {
+        if (!_isOpen) return "Monitor not open.";
+        var sb = new System.Text.StringBuilder();
+
+        foreach (var hardware in _computer.Hardware)
+        {
+            hardware.Update();
+            foreach (var sub in hardware.SubHardware)
+                sub.Update();
+
+            sb.AppendLine($"=== {hardware.HardwareType}: {hardware.Name} ===");
+            foreach (var sensor in hardware.Sensors)
+                sb.AppendLine($"  [{sensor.SensorType}] \"{sensor.Name}\" = {sensor.Value}");
+
+            foreach (var sub in hardware.SubHardware)
+            {
+                sb.AppendLine($"  --- SubHardware: {sub.Name} ({sub.HardwareType}) ---");
+                foreach (var sensor in sub.Sensors)
+                    sb.AppendLine($"    [{sensor.SensorType}] \"{sensor.Name}\" = {sensor.Value}");
+            }
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
 }

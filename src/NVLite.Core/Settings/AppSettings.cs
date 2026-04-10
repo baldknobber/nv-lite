@@ -9,6 +9,7 @@ public sealed class AppSettings
     public double WindowHeight { get; set; }
     public int WindowX { get; set; } = -1;
     public int WindowY { get; set; } = -1;
+    public bool IsMaximized { get; set; } = true;
 
     // System
     public bool MinimizeToTray { get; set; }

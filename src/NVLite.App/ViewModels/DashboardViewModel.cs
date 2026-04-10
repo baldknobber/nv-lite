@@ -240,6 +240,19 @@ public partial class DashboardViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task DumpSensorsAsync()
+    {
+        var dump = _monitor.DumpAllSensors();
+        var filePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+            "NVLite-SensorDump.txt");
+        await File.WriteAllTextAsync(filePath, dump);
+        SensorDumpStatus = $"Saved to Desktop: {Path.GetFileName(filePath)}";
+    }
+
+    [ObservableProperty] public partial string SensorDumpStatus { get; set; } = "";
+
     private void CheckTempAlert(float? gpuTemp)
     {
         var settings = App.Settings.Settings;

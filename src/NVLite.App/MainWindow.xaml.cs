@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Windowing;
 using NVLite.App.Views;
 using Windows.Graphics;
 using H.NotifyIcon;
@@ -87,8 +88,17 @@ public sealed partial class MainWindow : Window
     private void RestoreWindowState()
     {
         var s = App.Settings.Settings;
-        var w = s.WindowWidth > 200 ? (int)s.WindowWidth : 1024;
-        var h = s.WindowHeight > 200 ? (int)s.WindowHeight : 700;
+
+        // First launch or previously maximized — maximize the window
+        if (s.WindowWidth <= 200 || s.IsMaximized)
+        {
+            if (AppWindow.Presenter is OverlappedPresenter presenter)
+                presenter.Maximize();
+            return;
+        }
+
+        var w = (int)s.WindowWidth;
+        var h = (int)s.WindowHeight;
         AppWindow.Resize(new SizeInt32(w, h));
 
         if (s.WindowX >= 0 && s.WindowY >= 0)
@@ -105,10 +115,15 @@ public sealed partial class MainWindow : Window
         }
 
         var s = App.Settings.Settings;
-        s.WindowWidth = AppWindow.Size.Width;
-        s.WindowHeight = AppWindow.Size.Height;
-        s.WindowX = AppWindow.Position.X;
-        s.WindowY = AppWindow.Position.Y;
+        s.IsMaximized = AppWindow.Presenter is OverlappedPresenter p
+                        && p.State == OverlappedPresenterState.Maximized;
+        if (!s.IsMaximized)
+        {
+            s.WindowWidth = AppWindow.Size.Width;
+            s.WindowHeight = AppWindow.Size.Height;
+            s.WindowX = AppWindow.Position.X;
+            s.WindowY = AppWindow.Position.Y;
+        }
         App.Settings.Save();
 
         _trayIcon?.Dispose();
