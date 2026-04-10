@@ -110,7 +110,8 @@
                         <TextBlock Text="{x:Bind ViewModel.SelectedProfileName, Mode=OneWay}"
                                    Style="{StaticResource SubtitleTextBlockStyle}" />
                         <Button Grid.Column="1" Content="Delete" Click="DeleteProfile_Click"
-                                Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                Visibility="{x:Bind ViewModel.CanDeleteSelectedProfile, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                     </Grid>
 
                     <ListView Grid.Row="1"

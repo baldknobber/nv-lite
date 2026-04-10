@@ -99,17 +99,35 @@ public sealed class HardwareMonitorService : IDisposable
 
             hardware.Update();
 
+            // Update sub-hardware (cores, cache units) — many CPUs expose
+            // temperature and clock sensors only through sub-hardware nodes.
+            foreach (var sub in hardware.SubHardware)
+                sub.Update();
+
             float? packageTemp = null, usage = null, freq = null;
 
-            foreach (var sensor in hardware.Sensors)
+            // Collect sensors from both the CPU hardware and its sub-hardware
+            var allSensors = hardware.Sensors
+                .Concat(hardware.SubHardware.SelectMany(s => s.Sensors));
+
+            foreach (var sensor in allSensors)
             {
                 switch (sensor.SensorType)
                 {
+                    // Priority 1: Package / Tctl / Tdie — the single "whole CPU" temperature
                     case SensorType.Temperature when sensor.Name.Contains("Package", StringComparison.OrdinalIgnoreCase)
-                                                  || sensor.Name.Contains("Core (Tctl", StringComparison.OrdinalIgnoreCase):
+                                                  || sensor.Name.Contains("Tctl", StringComparison.OrdinalIgnoreCase)
+                                                  || sensor.Name.Contains("Tdie", StringComparison.OrdinalIgnoreCase):
                         packageTemp ??= sensor.Value;
                         break;
-                    case SensorType.Temperature when packageTemp is null && sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase):
+                    // Priority 2: CCD temps (AMD Zen 3+)
+                    case SensorType.Temperature when packageTemp is null
+                                                  && sensor.Name.Contains("CCD", StringComparison.OrdinalIgnoreCase):
+                        packageTemp ??= sensor.Value;
+                        break;
+                    // Priority 3: Any "Core" temperature as last resort
+                    case SensorType.Temperature when packageTemp is null
+                                                  && sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase):
                         packageTemp ??= sensor.Value;
                         break;
                     case SensorType.Load when sensor.Name.Contains("Total", StringComparison.OrdinalIgnoreCase):

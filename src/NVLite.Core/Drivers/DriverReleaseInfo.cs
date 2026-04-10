@@ -6,6 +6,8 @@ public sealed class DriverReleaseInfo
     public string? ReleaseDate { get; init; }
     public string Branch { get; init; } = "Game Ready";
     public string? DownloadUrl { get; init; }
+    public string? DetailsUrl { get; init; }
+    public bool IsInstalled { get; set; }
     public List<string> Highlights { get; init; } = [];
     public List<string> FixedIssues { get; init; } = [];
     public List<KnownIssue> KnownIssues { get; init; } = [];

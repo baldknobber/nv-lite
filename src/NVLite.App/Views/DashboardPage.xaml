@@ -16,6 +16,15 @@
 
         <TextBlock Text="GPU &amp; CPU Dashboard" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16" />
 
+        <!-- Temperature Alert -->
+        <InfoBar Grid.Row="0"
+                 Title="Temperature Alert"
+                 Message="{x:Bind ViewModel.AlertMessage, Mode=OneWay}"
+                 Severity="Warning"
+                 IsOpen="{x:Bind ViewModel.IsAlertActive, Mode=OneWay}"
+                 IsClosable="True"
+                 Margin="0,0,0,8" />
+
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="16">
 
@@ -97,7 +106,7 @@
                             <StackPanel Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2">
                                 <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}">
-                                    <Run Text="GPU Usage: " /><Run Text="{x:Bind ViewModel.GpuUsage, Mode=OneWay}" /><Run Text="%" />
+                                    <Run Text="GPU Usage: " /><Run Text="{x:Bind ViewModel.GpuUsageText, Mode=OneWay}" /><Run Text="%" />
                                 </TextBlock>
                                 <ProgressBar Value="{x:Bind ViewModel.GpuUsage, Mode=OneWay}"
                                              Maximum="100" Margin="0,4,0,0" />
@@ -161,7 +170,7 @@
                                 <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}">
                                     <Run Text="Usage: " />
-                                    <Run Text="{x:Bind ViewModel.CpuUsage, Mode=OneWay}" /><Run Text="%" />
+                                    <Run Text="{x:Bind ViewModel.CpuUsageText, Mode=OneWay}" /><Run Text="%" />
                                 </TextBlock>
                                 <ProgressBar Value="{x:Bind ViewModel.CpuUsage, Mode=OneWay}"
                                              Maximum="100" Margin="0,4,0,0" />
@@ -170,22 +179,40 @@
                     </Grid>
                 </Border>
 
-                <!-- Status -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
-                               Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock Grid.Column="1"
-                               Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Visibility="{x:Bind ViewModel.HasLastUpdated, Mode=OneWay}">
-                        <Run Text="Last updated " /><Run Text="{x:Bind ViewModel.LastUpdated, Mode=OneWay}" />
-                    </TextBlock>
-                </Grid>
+                <!-- Status & Logging -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Column="1"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Visibility="{x:Bind ViewModel.HasLastUpdated, Mode=OneWay}">
+                            <Run Text="Last updated " /><Run Text="{x:Bind ViewModel.LastUpdated, Mode=OneWay}" />
+                        </TextBlock>
+
+                        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                            <Button Content="{x:Bind ViewModel.LoggingButtonText, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.ToggleLoggingCommand}" />
+                            <TextBlock Text="{x:Bind ViewModel.LoggingStatus, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>

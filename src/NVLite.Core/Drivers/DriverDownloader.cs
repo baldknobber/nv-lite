@@ -6,14 +6,28 @@ public sealed class DriverDownloader
 {
     private static readonly HttpClient HttpClient = new();
 
+    private static readonly string[] AllowedDownloadHosts =
+    [
+        "us.download.nvidia.com",
+        "international.download.nvidia.com",
+        "developer.download.nvidia.com",
+    ];
+
     public async Task<string> DownloadAsync(string url, IProgress<double>? progress = null, CancellationToken ct = default)
     {
+        var uri = new Uri(url);
+        if (!uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Only HTTPS download URLs are allowed.");
+
+        if (!AllowedDownloadHosts.Any(h => uri.Host.Equals(h, StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException($"Untrusted download host: {uri.Host}");
+
         var downloadsFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
         Directory.CreateDirectory(downloadsFolder);
 
-        var fileName = Path.GetFileName(new Uri(url).AbsolutePath);
-        if (string.IsNullOrWhiteSpace(fileName))
+        var fileName = Path.GetFileName(uri.AbsolutePath);
+        if (string.IsNullOrWhiteSpace(fileName) || fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
             fileName = "nvidia-driver.exe";
 
         var filePath = Path.Combine(downloadsFolder, fileName);
@@ -44,10 +58,23 @@ public sealed class DriverDownloader
 
     public void LaunchInstaller(string installerPath, bool cleanInstall = false)
     {
+        if (!File.Exists(installerPath))
+            throw new FileNotFoundException("Installer file not found.", installerPath);
+
+        if (!installerPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Installer must be an .exe file.");
+
+        // Ensure the installer is within the user's Downloads folder
+        var downloadsFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        var canonicalPath = Path.GetFullPath(installerPath);
+        if (!canonicalPath.StartsWith(downloadsFolder, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Installer must be located in the Downloads folder.");
+
         var args = cleanInstall ? "-clean" : "";
         Process.Start(new ProcessStartInfo
         {
-            FileName = installerPath,
+            FileName = canonicalPath,
             Arguments = args,
             UseShellExecute = true,
         });
@@ -64,10 +91,13 @@ public sealed class DriverDownloader
 
         foreach (var path in cachePaths)
         {
-            if (Directory.Exists(path))
-            {
-                try { Directory.Delete(path, recursive: true); } catch { /* Best effort */ }
-            }
+            if (!Directory.Exists(path)) continue;
+
+            // Skip if the path is a symlink/reparse point to prevent symlink attacks
+            var dirInfo = new DirectoryInfo(path);
+            if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
+
+            try { Directory.Delete(path, recursive: true); } catch { /* Best effort */ }
         }
     }
 }

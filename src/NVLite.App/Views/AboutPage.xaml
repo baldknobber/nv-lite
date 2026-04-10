@@ -9,6 +9,8 @@
 
     <ScrollViewer Padding="24">
         <StackPanel Spacing="16" MaxWidth="500" HorizontalAlignment="Left">
+            <Image Source="ms-appx:///Assets/nv-lite-logo.png" Width="80" Height="80"
+                   HorizontalAlignment="Left" Margin="0,0,0,0" />
             <TextBlock Text="About NVLite" Style="{StaticResource TitleTextBlockStyle}" />
 
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"

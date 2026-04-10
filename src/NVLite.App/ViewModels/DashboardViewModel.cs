@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using NVLite.Core.Monitoring;
@@ -9,6 +10,8 @@ public partial class DashboardViewModel : ObservableObject
 {
     private readonly HardwareMonitorService _monitor = new();
     private CancellationTokenSource? _cts;
+    private SensorLogger? _sensorLogger;
+    private DateTime _lastTempAlertTime;
 
     private static readonly SolidColorBrush GreenBrush = new(Colors.LimeGreen);
     private static readonly SolidColorBrush YellowBrush = new(Colors.Orange);
@@ -20,6 +23,8 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] public partial string GpuMemClock { get; set; } = "--";
     [ObservableProperty] public partial string GpuPower { get; set; } = "--";
     [ObservableProperty] public partial double GpuUsage { get; set; }
+    public string GpuUsageText => GpuUsage.ToString("F0");
+    partial void OnGpuUsageChanged(double value) => OnPropertyChanged(nameof(GpuUsageText));
     [ObservableProperty] public partial double GpuMemUsed { get; set; }
     [ObservableProperty] public partial double GpuMemTotal { get; set; } = 1;
     [ObservableProperty] public partial string GpuFanSpeed { get; set; } = "--";
@@ -34,6 +39,8 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] public partial string CpuName { get; set; } = "Detecting CPU...";
     [ObservableProperty] public partial string CpuTemp { get; set; } = "--";
     [ObservableProperty] public partial double CpuUsage { get; set; }
+    public string CpuUsageText => CpuUsage.ToString("F0");
+    partial void OnCpuUsageChanged(double value) => OnPropertyChanged(nameof(CpuUsageText));
     [ObservableProperty] public partial SolidColorBrush CpuTempColor { get; set; } = GreenBrush;
 
     [ObservableProperty] public partial string StatusText { get; set; } = "Starting...";
@@ -43,6 +50,19 @@ public partial class DashboardViewModel : ObservableObject
         string.IsNullOrEmpty(LastUpdated) ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
 
     partial void OnLastUpdatedChanged(string value) => OnPropertyChanged(nameof(HasLastUpdated));
+
+    // Temperature alerts
+    [ObservableProperty] public partial bool IsAlertActive { get; set; }
+    [ObservableProperty] public partial string AlertMessage { get; set; } = "";
+
+    public event Action<string, string>? NotificationRequested;
+
+    // Sensor logging
+    [ObservableProperty] public partial bool IsLogging { get; set; }
+    [ObservableProperty] public partial string LoggingStatus { get; set; } = "";
+
+    public string LoggingButtonText => IsLogging ? "Stop Logging" : "Start Logging";
+    partial void OnIsLoggingChanged(bool value) => OnPropertyChanged(nameof(LoggingButtonText));
 
     private static SolidColorBrush GetTempBrush(float? temp)
     {
@@ -57,6 +77,8 @@ public partial class DashboardViewModel : ObservableObject
 
     public async Task StartMonitoringAsync()
     {
+        _cts?.Cancel();
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {
@@ -64,7 +86,9 @@ public partial class DashboardViewModel : ObservableObject
             StatusText = "Monitoring active";
             GpuDriverVersion = _monitor.GetGpuDriverVersion() ?? "";
 
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            var interval = TimeSpan.FromSeconds(
+                Math.Max(1, App.Settings.Settings.PollingIntervalSeconds));
+            using var timer = new PeriodicTimer(interval);
             while (await timer.WaitForNextTickAsync(_cts.Token))
             {
                 var gpu = _monitor.GetGpuInfo();
@@ -91,6 +115,12 @@ public partial class DashboardViewModel : ObservableObject
                     CpuUsage = cpu.Usage ?? 0;
                 }
 
+                // Sensor logging
+                _sensorLogger?.LogSample(gpu, cpu);
+
+                // Temperature alert check
+                CheckTempAlert(gpu?.Temperature);
+
                 LastUpdated = DateTime.Now.ToString("h:mm:ss tt");
             }
         }
@@ -105,5 +135,57 @@ public partial class DashboardViewModel : ObservableObject
     {
         _cts?.Cancel();
         _monitor.Close();
+        _sensorLogger?.Stop();
+        _sensorLogger?.Dispose();
+        _sensorLogger = null;
+        IsLogging = false;
+    }
+
+    [RelayCommand]
+    private void ToggleLogging()
+    {
+        if (IsLogging)
+        {
+            var path = _sensorLogger?.FilePath;
+            _sensorLogger?.Stop();
+            _sensorLogger?.Dispose();
+            _sensorLogger = null;
+            IsLogging = false;
+            LoggingStatus = $"Saved to {Path.GetFileName(path)}";
+        }
+        else
+        {
+            _sensorLogger = new SensorLogger();
+            _sensorLogger.Start();
+            IsLogging = true;
+            LoggingStatus = $"Logging to {Path.GetFileName(_sensorLogger.FilePath)}";
+        }
+    }
+
+    private void CheckTempAlert(float? gpuTemp)
+    {
+        var settings = App.Settings.Settings;
+        if (!settings.EnableTempAlerts || gpuTemp is null)
+        {
+            IsAlertActive = false;
+            return;
+        }
+
+        if (gpuTemp > settings.GpuTempAlertThreshold)
+        {
+            IsAlertActive = true;
+            AlertMessage = $"GPU temperature is {gpuTemp:F0}°C (threshold: {settings.GpuTempAlertThreshold}°C)";
+
+            // Cooldown — don't spam notifications more than once per 5 minutes
+            if (DateTime.Now - _lastTempAlertTime > TimeSpan.FromMinutes(5))
+            {
+                _lastTempAlertTime = DateTime.Now;
+                NotificationRequested?.Invoke("Temperature Alert", AlertMessage);
+            }
+        }
+        else
+        {
+            IsAlertActive = false;
+        }
     }
 }

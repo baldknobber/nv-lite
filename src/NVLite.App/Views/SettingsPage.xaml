@@ -27,6 +27,19 @@
                 </StackPanel>
             </Border>
 
+            <!-- System -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="System" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <ToggleSwitch Header="Minimize to system tray on close"
+                                  IsOn="{x:Bind ViewModel.MinimizeToTray, Mode=TwoWay}" />
+                    <ToggleSwitch Header="Start with Windows"
+                                  IsOn="{x:Bind ViewModel.StartWithWindows, Mode=TwoWay}" />
+                </StackPanel>
+            </Border>
+
             <!-- Monitoring -->
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -43,6 +56,19 @@
                                    SmallChange="1" LargeChange="5"
                                    Width="120" />
                     </StackPanel>
+                    <ToggleSwitch Header="GPU temperature alerts"
+                                  IsOn="{x:Bind ViewModel.EnableTempAlerts, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12"
+                                Visibility="{x:Bind ViewModel.EnableTempAlerts, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Alert threshold (°C)"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <NumberBox Value="{x:Bind ViewModel.GpuTempAlertThreshold, Mode=TwoWay}"
+                                   Minimum="50" Maximum="110"
+                                   SpinButtonPlacementMode="Inline"
+                                   SmallChange="5" LargeChange="10"
+                                   Width="120" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -54,6 +80,19 @@
                     <TextBlock Text="Drivers" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <ToggleSwitch Header="Check for driver updates on startup"
                                   IsOn="{x:Bind ViewModel.CheckDriverOnStartup, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="Auto-check interval (hours, 0 = off)"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <NumberBox Value="{x:Bind ViewModel.DriverCheckIntervalHours, Mode=TwoWay}"
+                                   Minimum="0" Maximum="168"
+                                   SpinButtonPlacementMode="Inline"
+                                   SmallChange="1" LargeChange="12"
+                                   Width="120" />
+                    </StackPanel>
+                    <TextBlock Text="Set to 0 to disable. Requires app restart to take effect."
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </Border>
         </StackPanel>

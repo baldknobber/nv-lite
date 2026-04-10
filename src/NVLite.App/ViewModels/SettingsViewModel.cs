@@ -1,5 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using NVLite.Core.Settings;
 
 namespace NVLite.App.ViewModels;
@@ -18,6 +17,21 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool CheckDriverOnStartup { get; set; }
 
+    [ObservableProperty]
+    public partial bool MinimizeToTray { get; set; }
+
+    [ObservableProperty]
+    public partial bool StartWithWindows { get; set; }
+
+    [ObservableProperty]
+    public partial bool EnableTempAlerts { get; set; }
+
+    [ObservableProperty]
+    public partial int GpuTempAlertThreshold { get; set; }
+
+    [ObservableProperty]
+    public partial int DriverCheckIntervalHours { get; set; }
+
     public SettingsViewModel(SettingsService settingsService, Action<string> applyTheme)
     {
         _settingsService = settingsService;
@@ -32,6 +46,11 @@ public partial class SettingsViewModel : ObservableObject
         };
         PollingIntervalSeconds = settings.PollingIntervalSeconds;
         CheckDriverOnStartup = settings.CheckDriverOnStartup;
+        MinimizeToTray = settings.MinimizeToTray;
+        StartWithWindows = settings.StartWithWindows;
+        EnableTempAlerts = settings.EnableTempAlerts;
+        GpuTempAlertThreshold = settings.GpuTempAlertThreshold;
+        DriverCheckIntervalHours = settings.DriverCheckIntervalHours;
     }
 
     partial void OnSelectedThemeIndexChanged(int value)
@@ -57,6 +76,40 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnCheckDriverOnStartupChanged(bool value)
     {
         _settingsService.Settings.CheckDriverOnStartup = value;
+        _settingsService.Save();
+    }
+
+    partial void OnMinimizeToTrayChanged(bool value)
+    {
+        _settingsService.Settings.MinimizeToTray = value;
+        _settingsService.Save();
+        App.MainWindow?.EnsureTrayIcon(value);
+    }
+
+    partial void OnStartWithWindowsChanged(bool value)
+    {
+        _settingsService.Settings.StartWithWindows = value;
+        _settingsService.Save();
+        StartupService.Set(value);
+    }
+
+    partial void OnEnableTempAlertsChanged(bool value)
+    {
+        _settingsService.Settings.EnableTempAlerts = value;
+        _settingsService.Save();
+    }
+
+    partial void OnGpuTempAlertThresholdChanged(int value)
+    {
+        var clamped = Math.Clamp(value, 50, 110);
+        _settingsService.Settings.GpuTempAlertThreshold = clamped;
+        _settingsService.Save();
+    }
+
+    partial void OnDriverCheckIntervalHoursChanged(int value)
+    {
+        var clamped = Math.Clamp(value, 0, 168);
+        _settingsService.Settings.DriverCheckIntervalHours = clamped;
         _settingsService.Save();
     }
 }

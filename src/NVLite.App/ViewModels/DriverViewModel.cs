@@ -21,17 +21,19 @@ public partial class DriverViewModel : ObservableObject
     [ObservableProperty] public partial string StatusText { get; set; } = "";
     [ObservableProperty] public partial string DownloadSizeText { get; set; } = "";
     [ObservableProperty] public partial bool HasVersionHistory { get; set; }
+    [ObservableProperty] public partial string? RollbackVersion { get; set; }
+    [ObservableProperty] public partial bool HasRollback { get; set; }
 
     public ObservableCollection<DriverReleaseInfo> VersionHistory { get; } = [];
 
     private string? _downloadUrl;
     private string? _downloadedFilePath;
+    private string? _rollbackUrl;
     private CancellationTokenSource? _downloadCts;
 
     public async Task AutoCheckAsync()
     {
-        if (App.Settings.Settings.CheckDriverOnStartup)
-            await CheckForUpdatesAsync();
+        await CheckForUpdatesAsync();
     }
 
     [RelayCommand]
@@ -77,13 +79,40 @@ public partial class DriverViewModel : ObservableObject
         {
             var releases = await _historyService.GetRecentReleasesAsync(10);
             VersionHistory.Clear();
-            foreach (var release in releases)
+
+            var installed = InstalledVersion;
+            int installedIdx = -1;
+
+            for (int i = 0; i < releases.Count; i++)
+            {
+                var release = releases[i];
+                if (installed is not null && release.Version == installed)
+                {
+                    release.IsInstalled = true;
+                    installedIdx = i;
+                }
                 VersionHistory.Add(release);
+            }
+
             HasVersionHistory = VersionHistory.Count > 0;
+
+            // Find rollback target (first version older than installed)
+            if (installedIdx >= 0 && installedIdx + 1 < releases.Count)
+            {
+                var rollback = releases[installedIdx + 1];
+                RollbackVersion = rollback.Version;
+                _rollbackUrl = rollback.DownloadUrl;
+                HasRollback = true;
+            }
+            else
+            {
+                HasRollback = false;
+            }
         }
         catch
         {
             HasVersionHistory = false;
+            HasRollback = false;
         }
     }
 
@@ -143,6 +172,13 @@ public partial class DriverViewModel : ObservableObject
     private void CancelDownload()
     {
         _downloadCts?.Cancel();
+    }
+
+    [RelayCommand]
+    private async Task RollbackDriverAsync()
+    {
+        if (_rollbackUrl is not null)
+            await DownloadFromUrlAsync(_rollbackUrl);
     }
 
     [RelayCommand]

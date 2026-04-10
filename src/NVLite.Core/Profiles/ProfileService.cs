@@ -130,6 +130,11 @@ public sealed class ProfileService
 
     public void ImportProfilesFromJson(string filePath)
     {
+        const long maxFileSize = 10 * 1024 * 1024; // 10 MB
+        var fileInfo = new FileInfo(filePath);
+        if (fileInfo.Length > maxFileSize)
+            throw new InvalidOperationException("Profile file is too large.");
+
         var json = File.ReadAllText(filePath);
         var import = JsonSerializer.Deserialize<Dictionary<string, List<ProfileSettingInfo>>>(json);
         if (import is null || !_available) return;

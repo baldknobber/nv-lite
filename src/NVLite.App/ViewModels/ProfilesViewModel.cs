@@ -19,6 +19,7 @@ public partial class ProfilesViewModel : ObservableObject
     [ObservableProperty] public partial ObservableCollection<ProfileSettingInfo> SelectedProfileSettings { get; set; } = [];
     [ObservableProperty] public partial string StatusText { get; set; } = "";
     [ObservableProperty] public partial bool HasUnsavedChanges { get; set; }
+    [ObservableProperty] public partial bool CanDeleteSelectedProfile { get; set; }
     [ObservableProperty] public partial ObservableCollection<CommunityProfileEntry> CommunityProfiles { get; set; } = [];
     [ObservableProperty] public partial bool HasCommunityProfiles { get; set; }
 
@@ -32,10 +33,12 @@ public partial class ProfilesViewModel : ObservableObject
             SelectedProfileSettings.Clear();
             _pendingChanges.Clear();
             HasUnsavedChanges = false;
+            CanDeleteSelectedProfile = false;
             return;
         }
 
         SelectedProfileName = value.Name;
+        CanDeleteSelectedProfile = !value.IsPredefined;
         _pendingChanges.Clear();
         HasUnsavedChanges = false;
         var settings = _profileService.GetProfileSettings(value.Name);
@@ -93,10 +96,11 @@ public partial class ProfilesViewModel : ObservableObject
         if (SelectedProfile is null || _pendingChanges.Count == 0) return;
 
         var profileName = SelectedProfile.Name;
+        var changesToApply = new Dictionary<uint, uint>(_pendingChanges);
         var failed = 0;
         await Task.Run(() =>
         {
-            foreach (var (settingId, value) in _pendingChanges)
+            foreach (var (settingId, value) in changesToApply)
             {
                 if (!_profileService.SetSetting(profileName, settingId, value))
                     failed++;

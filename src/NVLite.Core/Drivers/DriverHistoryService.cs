@@ -73,12 +73,18 @@ public sealed class DriverHistoryService
                     var branch = name is not null && name.Contains("Studio", StringComparison.OrdinalIgnoreCase)
                         ? "Studio" : "Game Ready";
 
+                    var detailsUrl = info.TryGetProperty("DetailsURL", out var detUrl)
+                        ? detUrl.GetString() : null;
+                    if (detailsUrl is not null && detailsUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                        detailsUrl = "https://" + detailsUrl[7..];
+
                     results.Add(new DriverReleaseInfo
                     {
                         Version = version,
                         DownloadUrl = downloadUrl,
                         ReleaseDate = releaseDate,
                         Branch = branch,
+                        DetailsUrl = detailsUrl,
                     });
                 }
             }
