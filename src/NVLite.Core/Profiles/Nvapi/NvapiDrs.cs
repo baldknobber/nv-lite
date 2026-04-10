@@ -21,8 +21,8 @@ internal static class NvapiDrs
     internal const uint NVDRS_STRING_TYPE = 2;
     internal const uint NVDRS_WSTRING_TYPE = 3;
 
-    // Max lengths
-    internal const int NVAPI_UNICODE_STRING_MAX = 4096;
+    // Max lengths — NVAPI_UNICODE_STRING_MAX is 2048 wchars (matching nvapi.h)
+    internal const int NVAPI_UNICODE_STRING_MAX = 2048;
     internal const int NVAPI_SETTING_MAX_VALUES = 100;
 
     // Function pointer IDs for nvapi_QueryInterface
@@ -32,16 +32,23 @@ internal static class NvapiDrs
     private const uint NvAPI_DRS_DestroySession_ID = 0xDAD9CFF8;
     private const uint NvAPI_DRS_LoadSettings_ID = 0x375DBD6B;
     private const uint NvAPI_DRS_SaveSettings_ID = 0xFCBC7E14;
-    private const uint NvAPI_DRS_EnumProfiles_ID = 0x7AE3A515;
+    private const uint NvAPI_DRS_EnumProfiles_ID = 0xBC371EE0;
     private const uint NvAPI_DRS_GetProfileInfo_ID = 0x61CD6FD6;
     private const uint NvAPI_DRS_GetBaseProfile_ID = 0xDA8466A0;
+    private const uint NvAPI_DRS_GetCurrentGlobalProfile_ID = 0x617BFF9F;
     private const uint NvAPI_DRS_EnumSettings_ID = 0xAE3039DA;
-    private const uint NvAPI_DRS_GetSetting_ID = 0x73BF8338;
-    private const uint NvAPI_DRS_SetSetting_ID = 0x577DD202;
+    private const uint NvAPI_DRS_GetSetting_ID = 0xEA99498D;
+    private const uint NvAPI_DRS_GetSetting_ID_FALLBACK = 0x73BF8338;
+    private const uint NvAPI_DRS_SetSetting_ID = 0x8A2CF5F5;
+    private const uint NvAPI_DRS_SetSetting_ID_FALLBACK = 0x577DD202;
     private const uint NvAPI_DRS_FindProfileByName_ID = 0x7E4A9A0B;
     private const uint NvAPI_DRS_EnumAvailableSettingIds_ID = 0xF020614A;
     private const uint NvAPI_DRS_CreateProfile_ID = 0xCC176068;
     private const uint NvAPI_DRS_DeleteProfile_ID = 0x17093206;
+    private const uint NvAPI_DRS_GetNumProfiles_ID = 0x1DAE4FBC;
+    private const uint NvAPI_DRS_DeleteProfileSetting_ID = 0xE4A26362;
+    private const uint NvAPI_DRS_RestoreProfileDefault_ID = 0xFA5F6134;
+    private const uint NvAPI_DRS_RestoreProfileDefaultSetting_ID = 0x53F0381E;
 
     [DllImport("nvapi64.dll", EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr QueryInterface(uint id);
@@ -75,10 +82,22 @@ internal static class NvapiDrs
     internal delegate int NvAPI_DRS_GetBaseProfileDelegate(IntPtr hSession, out IntPtr hProfile);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_GetCurrentGlobalProfileDelegate(IntPtr hSession, out IntPtr hProfile);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate int NvAPI_DRS_EnumSettingsDelegate(IntPtr hSession, IntPtr hProfile, uint startIndex, ref uint settingCount, [In, Out] NVDRS_SETTING[] settings);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    internal delegate int NvAPI_DRS_FindProfileByNameDelegate(IntPtr hSession, [MarshalAs(UnmanagedType.LPWStr)] string profileName, out IntPtr hProfile);
+    internal delegate int NvAPI_DRS_GetSettingDelegate(IntPtr hSession, IntPtr hProfile, uint settingId, ref NVDRS_SETTING setting, ref uint reserved);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_GetSettingOldDelegate(IntPtr hSession, IntPtr hProfile, uint settingId, ref NVDRS_SETTING setting);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_FindProfileByNameDelegate(IntPtr hSession, NvApiUnicodeString profileName, out IntPtr hProfile);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_GetNumProfilesDelegate(IntPtr hSession, out uint numProfiles);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate int NvAPI_DRS_SetSettingDelegate(IntPtr hSession, IntPtr hProfile, ref NVDRS_SETTING setting);
@@ -88,6 +107,15 @@ internal static class NvapiDrs
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate int NvAPI_DRS_DeleteProfileDelegate(IntPtr hSession, IntPtr hProfile);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_DeleteProfileSettingDelegate(IntPtr hSession, IntPtr hProfile, uint settingId);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_RestoreProfileDefaultDelegate(IntPtr hSession, IntPtr hProfile);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int NvAPI_DRS_RestoreProfileDefaultSettingDelegate(IntPtr hSession, IntPtr hProfile, uint settingId);
 
     // Function pointers (resolved at runtime)
     internal static NvAPI_InitializeDelegate? Initialize;
@@ -99,13 +127,21 @@ internal static class NvapiDrs
     internal static NvAPI_DRS_EnumProfilesDelegate? DRS_EnumProfiles;
     internal static NvAPI_DRS_GetProfileInfoDelegate? DRS_GetProfileInfo;
     internal static NvAPI_DRS_GetBaseProfileDelegate? DRS_GetBaseProfile;
+    internal static NvAPI_DRS_GetCurrentGlobalProfileDelegate? DRS_GetCurrentGlobalProfile;
     internal static NvAPI_DRS_EnumSettingsDelegate? DRS_EnumSettings;
+    internal static NvAPI_DRS_GetSettingDelegate? DRS_GetSetting;
+    internal static NvAPI_DRS_GetSettingOldDelegate? DRS_GetSettingOld;
     internal static NvAPI_DRS_FindProfileByNameDelegate? DRS_FindProfileByName;
     internal static NvAPI_DRS_SetSettingDelegate? DRS_SetSetting;
     internal static NvAPI_DRS_CreateProfileDelegate? DRS_CreateProfile;
     internal static NvAPI_DRS_DeleteProfileDelegate? DRS_DeleteProfile;
+    internal static NvAPI_DRS_DeleteProfileSettingDelegate? DRS_DeleteProfileSetting;
+    internal static NvAPI_DRS_RestoreProfileDefaultDelegate? DRS_RestoreProfileDefault;
+    internal static NvAPI_DRS_RestoreProfileDefaultSettingDelegate? DRS_RestoreProfileDefaultSetting;
+    internal static NvAPI_DRS_GetNumProfilesDelegate? DRS_GetNumProfiles;
 
     private static bool _initialized;
+    internal static string? InitDiagnostics { get; private set; }
 
     internal static bool TryInitialize()
     {
@@ -113,6 +149,8 @@ internal static class NvapiDrs
 
         try
         {
+            var diag = new System.Text.StringBuilder();
+
             Initialize = GetDelegate<NvAPI_InitializeDelegate>(NvAPI_Initialize_ID);
             if (Initialize == null) return false;
 
@@ -127,12 +165,34 @@ internal static class NvapiDrs
             DRS_EnumProfiles = GetDelegate<NvAPI_DRS_EnumProfilesDelegate>(NvAPI_DRS_EnumProfiles_ID);
             DRS_GetProfileInfo = GetDelegate<NvAPI_DRS_GetProfileInfoDelegate>(NvAPI_DRS_GetProfileInfo_ID);
             DRS_GetBaseProfile = GetDelegate<NvAPI_DRS_GetBaseProfileDelegate>(NvAPI_DRS_GetBaseProfile_ID);
+            DRS_GetCurrentGlobalProfile = GetDelegate<NvAPI_DRS_GetCurrentGlobalProfileDelegate>(NvAPI_DRS_GetCurrentGlobalProfile_ID);
             DRS_EnumSettings = GetDelegate<NvAPI_DRS_EnumSettingsDelegate>(NvAPI_DRS_EnumSettings_ID);
+            DRS_GetSetting = GetDelegate<NvAPI_DRS_GetSettingDelegate>(NvAPI_DRS_GetSetting_ID)
+                         ?? GetDelegate<NvAPI_DRS_GetSettingDelegate>(NvAPI_DRS_GetSetting_ID_FALLBACK);
+            DRS_GetSettingOld = GetDelegate<NvAPI_DRS_GetSettingOldDelegate>(NvAPI_DRS_GetSetting_ID_FALLBACK);
             DRS_FindProfileByName = GetDelegate<NvAPI_DRS_FindProfileByNameDelegate>(NvAPI_DRS_FindProfileByName_ID);
-            DRS_SetSetting = GetDelegate<NvAPI_DRS_SetSettingDelegate>(NvAPI_DRS_SetSetting_ID);
+            DRS_SetSetting = GetDelegate<NvAPI_DRS_SetSettingDelegate>(NvAPI_DRS_SetSetting_ID_FALLBACK);
             DRS_CreateProfile = GetDelegate<NvAPI_DRS_CreateProfileDelegate>(NvAPI_DRS_CreateProfile_ID);
             DRS_DeleteProfile = GetDelegate<NvAPI_DRS_DeleteProfileDelegate>(NvAPI_DRS_DeleteProfile_ID);
+            DRS_DeleteProfileSetting = GetDelegate<NvAPI_DRS_DeleteProfileSettingDelegate>(NvAPI_DRS_DeleteProfileSetting_ID);
+            DRS_RestoreProfileDefault = GetDelegate<NvAPI_DRS_RestoreProfileDefaultDelegate>(NvAPI_DRS_RestoreProfileDefault_ID);
+            DRS_RestoreProfileDefaultSetting = GetDelegate<NvAPI_DRS_RestoreProfileDefaultSettingDelegate>(NvAPI_DRS_RestoreProfileDefaultSetting_ID);
+            DRS_GetNumProfiles = GetDelegate<NvAPI_DRS_GetNumProfilesDelegate>(NvAPI_DRS_GetNumProfiles_ID);
 
+            // Log which functions resolved
+            diag.Append($"CreateSession={DRS_CreateSession is not null}, ");
+            diag.Append($"LoadSettings={DRS_LoadSettings is not null}, ");
+            diag.Append($"EnumProfiles={DRS_EnumProfiles is not null}, ");
+            diag.Append($"GetProfileInfo={DRS_GetProfileInfo is not null}, ");
+            diag.Append($"GetBaseProfile={DRS_GetBaseProfile is not null}, ");
+            diag.Append($"FindByName={DRS_FindProfileByName is not null}, ");
+            diag.Append($"EnumSettings={DRS_EnumSettings is not null}");
+
+            // Try raw pointer check for EnumProfiles
+            var rawPtr = QueryInterface(NvAPI_DRS_EnumProfiles_ID);
+            diag.Append($" | EnumProfiles raw ptr=0x{rawPtr:X}");
+
+            InitDiagnostics = diag.ToString();
             _initialized = true;
             return true;
         }
@@ -151,6 +211,16 @@ internal static class NvapiDrs
         var ptr = QueryInterface(id);
         return ptr == IntPtr.Zero ? null : Marshal.GetDelegateForFunctionPointer<T>(ptr);
     }
+}
+
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+internal struct NvApiUnicodeString
+{
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = NvapiDrs.NVAPI_UNICODE_STRING_MAX)]
+    private string _value;
+
+    public NvApiUnicodeString(string value) => _value = value ?? string.Empty;
+    public override string ToString() => _value?.TrimEnd('\0') ?? string.Empty;
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8, CharSet = CharSet.Unicode)]
@@ -176,7 +246,19 @@ internal struct NVDRS_SETTING
     public uint settingLocation;
     public uint isCurrentPredefined;
     public uint isPredefinedValid;
-    // Union: for simplicity, treat as DWORD (covers most settings)
-    public uint currentValue;
-    public uint predefinedValue;
+    // Value unions — predefined comes BEFORE current per NVAPI header
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4100)]
+    public byte[] predefinedValueData;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4100)]
+    public byte[] currentValueData;
+
+    public uint CurrentDwordValue =>
+        currentValueData is { Length: >= 4 }
+            ? BitConverter.ToUInt32(currentValueData, 0)
+            : 0;
+
+    public uint PredefinedDwordValue =>
+        predefinedValueData is { Length: >= 4 }
+            ? BitConverter.ToUInt32(predefinedValueData, 0)
+            : 0;
 }

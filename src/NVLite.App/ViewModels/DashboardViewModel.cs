@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using NVLite.Core.Monitoring;
+using NVLite.Core.Profiles;
 
 namespace NVLite.App.ViewModels;
 
@@ -253,6 +255,221 @@ public partial class DashboardViewModel : ObservableObject
 
     [ObservableProperty] public partial string SensorDumpStatus { get; set; } = "";
 
+    // --- Display Info ---
+    [ObservableProperty] public partial ObservableCollection<DisplayInfo> Displays { get; set; } = [];
+
+    // --- GPU Settings (Base Profile key settings) ---
+    [ObservableProperty] public partial ObservableCollection<GpuSettingItem> GpuSettings { get; set; } = [];
+    [ObservableProperty] public partial bool GpuSettingsAvailable { get; set; }
+    [ObservableProperty] public partial string GpuSettingsStatus { get; set; } = "";
+
+    public Action? SuppressSelectionChanged { get; set; }
+    public Action? ResumeSelectionChanged { get; set; }
+
+    private ProfileService? _profileService;
+
+    public async Task LoadGpuSettingsAsync()
+    {
+        await Task.Run(() =>
+        {
+            try
+            {
+                _profileService ??= new ProfileService();
+                if (!_profileService.IsAvailable)
+                {
+                    App.DispatcherQueue.TryEnqueue(() =>
+                        GpuSettingsStatus = $"NVIDIA driver not available: {_profileService.InitError}");
+                    return;
+                }
+
+                var (settings, diag) = _profileService.GetBaseProfileSettings();
+                var keySettings = new List<GpuSettingItem>();
+
+                // Show the most useful global driver settings
+                uint[] keyIds = [
+                    0x1057EB71, // Power Management Mode
+                    0x00A879CF, // Vertical Sync
+                    0x10835002, // Frame Rate Limiter
+                    0x1095F170, // Low Latency Mode
+                    0x20C1221E, // Threaded Optimization
+                ];
+
+                foreach (var id in keyIds)
+                {
+                    var setting = settings.FirstOrDefault(s => s.Id == id);
+                    if (setting is null) continue;
+
+                    // Frame Rate Limiter: show current FPS if not a preset
+                    var displayVal = setting.DisplayValue;
+                    if (id == 0x10835002 && setting.RawValue != 0 && setting.FriendlyValue == null)
+                        displayVal = $"{setting.RawValue} FPS";
+
+                    var item = new GpuSettingItem
+                    {
+                        Id = setting.Id,
+                        Name = setting.Name,
+                        CurrentValue = setting.RawValue,
+                        DisplayValue = displayVal,
+                        ValueOptions = setting.ValueOptions ?? new(),
+                    };
+                    item.BuildOptionLists();
+                    keySettings.Add(item);
+                }
+
+                App.DispatcherQueue.TryEnqueue(() =>
+                {
+                    GpuSettings.Clear();
+                    foreach (var s in keySettings) GpuSettings.Add(s);
+                    GpuSettingsAvailable = GpuSettings.Count > 0;
+                    GpuSettingsStatus = GpuSettings.Count == 0
+                        ? $"No settings found ({diag})"
+                        : "";
+
+                    // Set SelectedIndex after items are bound to avoid reset
+                    foreach (var s in GpuSettings)
+                        s.SelectedIndex = s.InitialSelectedIndex;
+                });
+            }
+            catch (Exception ex)
+            {
+                App.DispatcherQueue.TryEnqueue(() =>
+                {
+                    GpuSettingsStatus = $"Could not load: {ex.Message}";
+                });
+            }
+        });
+    }
+
+    private CancellationTokenSource? _statusClearCts;
+
+    private void ShowStatus(string message)
+    {
+        GpuSettingsStatus = message;
+        _statusClearCts?.Cancel();
+        _statusClearCts = new CancellationTokenSource();
+        var token = _statusClearCts.Token;
+        _ = Task.Delay(3000, token).ContinueWith(_ =>
+            App.DispatcherQueue.TryEnqueue(() => { if (!token.IsCancellationRequested) GpuSettingsStatus = ""; }),
+            TaskContinuationOptions.OnlyOnRanToCompletion);
+    }
+
+    public void ApplyGpuSetting(uint settingId, uint newValue)
+    {
+        try
+        {
+            var success = _profileService?.SetGlobalSetting(settingId, newValue) ?? false;
+            ShowStatus(success ? "Setting applied" : "Failed to apply setting");
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"Error: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task RestoreGpuDefaultsAsync()
+    {
+        uint[] keyIds = [0x1057EB71, 0x00A879CF, 0x10835002, 0x1095F170, 0x20C1221E];
+        var success = await Task.Run(() => _profileService?.RestoreDefaultSettings(keyIds) ?? false);
+        if (success)
+        {
+            ShowStatus("Defaults restored");
+            SuppressSelectionChanged?.Invoke();
+            await LoadGpuSettingsAsync();
+            ResumeSelectionChanged?.Invoke();
+        }
+        else
+        {
+            ShowStatus("Failed to restore defaults");
+        }
+    }
+
+    // --- Quick Actions ---
+    [RelayCommand]
+    private void OpenNvidiaControlPanel()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("nvcplui.exe") { UseShellExecute = true });
+        }
+        catch
+        {
+            // Try the full path fallback
+            try
+            {
+                var path = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    @"NVIDIA Corporation\Control Panel Client\nvcplui.exe");
+                if (File.Exists(path))
+                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch { /* silently fail */ }
+        }
+    }
+
+    [RelayCommand]
+    private async Task ClearShaderCacheAsync()
+    {
+        try
+        {
+            var paths = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    @"NVIDIA\DXCache"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    @"NVIDIA\GLCache"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    @"NVIDIA Corporation\NV_Cache"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    @"D3DSCache"),
+            };
+
+            long totalCleared = 0;
+            int filesDeleted = 0;
+
+            await Task.Run(() =>
+            {
+                foreach (var dir in paths)
+                {
+                    if (!Directory.Exists(dir)) continue;
+                    foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+                    {
+                        try
+                        {
+                            var info = new FileInfo(file);
+                            totalCleared += info.Length;
+                            info.Delete();
+                            filesDeleted++;
+                        }
+                        catch { /* skip locked files */ }
+                    }
+                }
+            });
+
+            var mb = totalCleared / (1024.0 * 1024.0);
+            ShaderCacheStatus = mb > 1
+                ? $"Cleared {mb:F1} MB ({filesDeleted} files)"
+                : $"Cleared {filesDeleted} files";
+        }
+        catch (Exception ex)
+        {
+            ShaderCacheStatus = $"Error: {ex.Message}";
+        }
+    }
+
+    [ObservableProperty] public partial string ShaderCacheStatus { get; set; } = "";
+
+    public void LoadDisplayInfo()
+    {
+        try
+        {
+            var displays = DisplayInfoService.GetDisplays();
+            Displays.Clear();
+            foreach (var d in displays) Displays.Add(d);
+        }
+        catch { /* non-critical */ }
+    }
+
     private void CheckTempAlert(float? gpuTemp)
     {
         var settings = App.Settings.Settings;
@@ -315,5 +532,44 @@ public partial class CoreDetailViewModel : ObservableObject
         if (App.Settings.Settings.UseFahrenheit)
             return (celsius.Value * 9f / 5f + 32f).ToString("F0");
         return celsius.Value.ToString("F0");
+    }
+}
+
+public partial class GpuSettingItem : ObservableObject
+{
+    [ObservableProperty] public partial uint Id { get; set; }
+    [ObservableProperty] public partial string Name { get; set; } = "";
+    [ObservableProperty] public partial uint CurrentValue { get; set; }
+    [ObservableProperty] public partial string DisplayValue { get; set; } = "";
+    [ObservableProperty] public partial Dictionary<uint, string> ValueOptions { get; set; } = new();
+    [ObservableProperty] public partial int SelectedIndex { get; set; } = -1;
+
+    /// <summary>Stored during BuildOptionLists, applied after UI binding.</summary>
+    public int InitialSelectedIndex { get; private set; } = -1;
+
+    /// <summary>Flat list of option labels for ItemsSource binding.</summary>
+    public List<string> OptionLabels { get; set; } = [];
+
+    /// <summary>Ordered list of raw uint keys matching OptionLabels indices.</summary>
+    public List<uint> OptionKeys { get; set; } = [];
+
+    public bool HasOptions => ValueOptions.Count > 0;
+    public bool IsFrameRateLimiter => false; // No longer special-cased
+
+    /// <summary>Call after setting ValueOptions and CurrentValue to build bindable lists.</summary>
+    public void BuildOptionLists()
+    {
+        OptionLabels.Clear();
+        OptionKeys.Clear();
+        int idx = 0;
+        InitialSelectedIndex = -1;
+        foreach (var kvp in ValueOptions)
+        {
+            OptionLabels.Add(kvp.Value);
+            OptionKeys.Add(kvp.Key);
+            if (kvp.Key == CurrentValue)
+                InitialSelectedIndex = idx;
+            idx++;
+        }
     }
 }

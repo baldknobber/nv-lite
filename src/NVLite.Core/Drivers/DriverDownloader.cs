@@ -81,6 +81,7 @@ public sealed class DriverDownloader
             FileName = canonicalPath,
             Arguments = args,
             UseShellExecute = true,
+            Verb = "runas",
         });
     }
 
@@ -101,8 +102,8 @@ public sealed class DriverDownloader
         {
             FileName = canonicalPath,
             Arguments = args,
-            UseShellExecute = false,
-            CreateNoWindow = true,
+            UseShellExecute = true,
+            Verb = "runas",
         }) ?? throw new InvalidOperationException("Failed to start installer process.");
 
         await process.WaitForExitAsync(ct).ConfigureAwait(false);

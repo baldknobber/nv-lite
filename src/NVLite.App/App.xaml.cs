@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 using NVLite.Core.Drivers;
 using NVLite.Core.Settings;
 
@@ -11,6 +12,8 @@ public partial class App : Application
     public static SettingsService Settings { get; } = new();
 
     public static MainWindow? MainWindow => _window;
+
+    public static DispatcherQueue DispatcherQueue => _window!.DispatcherQueue;
 
     public App()
     {
