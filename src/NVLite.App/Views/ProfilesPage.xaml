@@ -149,9 +149,60 @@
         </Grid>
 
         <!-- Status bar -->
-        <TextBlock Grid.Row="3" Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
-                   Style="{StaticResource CaptionTextBlockStyle}"
-                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   Margin="0,8,0,0" />
+        <StackPanel Grid.Row="3" Margin="0,8,0,0" Spacing="8">
+            <!-- Community Profiles -->
+            <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                      Expanding="CommunityExpander_Expanding">
+                <Expander.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE774;" FontSize="16" />
+                        <TextBlock Text="Community Profiles" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Expander.Header>
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Curated profiles shared by the NVLite community on GitHub."
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <ListView ItemsSource="{x:Bind ViewModel.CommunityProfiles, Mode=OneWay}"
+                              SelectionMode="None" MaxHeight="300">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="profiles:CommunityProfileEntry">
+                                <Grid Padding="0,6" ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold">
+                                            <Run Text="{x:Bind GameName}" />
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                            <Run Text="by " /><Run Text="{x:Bind Contributor}" />
+                                            <Run Text=" — " /><Run Text="{x:Bind Description}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <HyperlinkButton Grid.Column="1" Content="View on GitHub"
+                                                     NavigateUri="https://github.com/baldknobber/nv-lite/tree/main/community-profiles"
+                                                     VerticalAlignment="Center" />
+                                    <Button Grid.Column="2" Content="Apply" Tag="{x:Bind FileName}"
+                                            Click="ApplyCommunityProfile_Click"
+                                            VerticalAlignment="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock Text="No community profiles available yet. Contribute yours on GitHub!"
+                               Visibility="{x:Bind ViewModel.HasCommunityProfiles, Mode=OneWay, Converter={StaticResource InverseBoolToVisibility}}"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Expander>
+
+            <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
     </Grid>
 </Page>

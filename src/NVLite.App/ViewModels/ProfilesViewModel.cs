@@ -10,6 +10,7 @@ namespace NVLite.App.ViewModels;
 public partial class ProfilesViewModel : ObservableObject
 {
     private readonly ProfileService _profileService = new();
+    private readonly CommunityProfileService _communityService = new();
     private List<ProfileInfo> _allProfiles = [];
 
     [ObservableProperty] public partial ObservableCollection<ProfileInfo> FilteredProfiles { get; set; } = [];
@@ -18,6 +19,8 @@ public partial class ProfilesViewModel : ObservableObject
     [ObservableProperty] public partial ObservableCollection<ProfileSettingInfo> SelectedProfileSettings { get; set; } = [];
     [ObservableProperty] public partial string StatusText { get; set; } = "";
     [ObservableProperty] public partial bool HasUnsavedChanges { get; set; }
+    [ObservableProperty] public partial ObservableCollection<CommunityProfileEntry> CommunityProfiles { get; set; } = [];
+    [ObservableProperty] public partial bool HasCommunityProfiles { get; set; }
 
     private readonly Dictionary<uint, uint> _pendingChanges = [];
 
@@ -196,6 +199,65 @@ public partial class ProfilesViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Import failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task LoadCommunityProfilesAsync()
+    {
+        try
+        {
+            var entries = await _communityService.GetIndexAsync();
+            CommunityProfiles = new ObservableCollection<CommunityProfileEntry>(entries);
+            HasCommunityProfiles = CommunityProfiles.Count > 0;
+        }
+        catch
+        {
+            HasCommunityProfiles = false;
+        }
+    }
+
+    public async Task ApplyCommunityProfileAsync(string fileName)
+    {
+        try
+        {
+            StatusText = "Downloading community profile...";
+            var profile = await _communityService.GetProfileAsync(fileName);
+            if (profile is null)
+            {
+                StatusText = "Failed to download profile";
+                return;
+            }
+
+            var created = await Task.Run(() => _profileService.CreateProfile(profile.ProfileName));
+            if (!created)
+            {
+                StatusText = "Failed to create profile (NVAPI unavailable)";
+                return;
+            }
+
+            var failed = 0;
+            await Task.Run(() =>
+            {
+                foreach (var (settingIdHex, value) in profile.Settings)
+                {
+                    if (uint.TryParse(settingIdHex.Replace("0x", ""), System.Globalization.NumberStyles.HexNumber,
+                        System.Globalization.CultureInfo.InvariantCulture, out var settingId))
+                    {
+                        if (!_profileService.SetSetting(profile.ProfileName, settingId, value))
+                            failed++;
+                    }
+                }
+            });
+
+            StatusText = failed > 0
+                ? $"Applied \"{profile.ProfileName}\" with {failed} error(s)"
+                : $"Applied \"{profile.ProfileName}\" successfully";
+            await LoadProfilesAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Failed to apply profile: {ex.Message}";
         }
     }
 }

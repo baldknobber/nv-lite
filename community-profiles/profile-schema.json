@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NVLite Community Profile",
+  "type": "object",
+  "required": ["profileName", "gameName", "settings", "contributor"],
+  "properties": {
+    "profileName": {
+      "type": "string",
+      "description": "Display name for the profile"
+    },
+    "gameName": {
+      "type": "string",
+      "description": "Game or application this profile targets"
+    },
+    "gameExecutable": {
+      "type": "string",
+      "description": "Executable filename (e.g. game.exe)"
+    },
+    "gpuSeries": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "GPU series tested on (e.g. RTX 4070, RTX 3080)"
+    },
+    "driverVersionTested": {
+      "type": "string",
+      "description": "Driver version this was tested on"
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "Map of setting ID (hex string) to DWORD value"
+    },
+    "contributor": {
+      "type": "string",
+      "description": "GitHub username or display name of contributor"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of what this profile optimizes"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags like 'performance', 'quality', 'VR', 'ray-tracing'"
+    },
+    "dateAdded": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date when profile was added"
+    }
+  }
+}

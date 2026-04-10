@@ -79,4 +79,18 @@ public sealed partial class ProfilesPage : Page
             ViewModel.StageSettingChange(settingId, decValue);
         }
     }
+
+    private async void CommunityExpander_Expanding(Expander sender, ExpanderExpandingEventArgs args)
+    {
+        if (ViewModel.CommunityProfiles.Count == 0)
+            await ViewModel.LoadCommunityProfilesCommand.ExecuteAsync(null);
+    }
+
+    private async void ApplyCommunityProfile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is string fileName)
+        {
+            await ViewModel.ApplyCommunityProfileAsync(fileName);
+        }
+    }
 }
