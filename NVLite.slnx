@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NVLite.App/NVLite.App.csproj" />
+    <Project Path="src/NVLite.Core/NVLite.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NVLite.Core.Tests/NVLite.Core.Tests.csproj" />
+  </Folder>
+</Solution>

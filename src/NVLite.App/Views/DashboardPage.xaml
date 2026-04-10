@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="NVLite.App.Views.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    NavigationCacheMode="Enabled">
+
+    <Grid Padding="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="GPU &amp; CPU Dashboard" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16" />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="16">
+
+                <!-- GPU Card -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="20">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                            <FontIcon Glyph="&#xE770;" FontSize="20" />
+                            <TextBlock Text="{x:Bind ViewModel.GpuName, Mode=OneWay}"
+                                       Style="{StaticResource SubtitleTextBlockStyle}" />
+                        </StackPanel>
+
+                        <Grid Grid.Row="1" ColumnSpacing="24" RowSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Temperature -->
+                            <StackPanel Grid.Column="0" Grid.Row="0">
+                                <TextBlock Text="Temperature" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
+                                    <Run Text="{x:Bind ViewModel.GpuTemp, Mode=OneWay}" /><Run Text="°C" />
+                                </TextBlock>
+                            </StackPanel>
+
+                            <!-- Core Clock -->
+                            <StackPanel Grid.Column="1" Grid.Row="0">
+                                <TextBlock Text="Core Clock" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
+                                    <Run Text="{x:Bind ViewModel.GpuCoreClock, Mode=OneWay}" /><Run Text=" MHz" />
+                                </TextBlock>
+                            </StackPanel>
+
+                            <!-- Memory Clock -->
+                            <StackPanel Grid.Column="2" Grid.Row="0">
+                                <TextBlock Text="Memory Clock" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
+                                    <Run Text="{x:Bind ViewModel.GpuMemClock, Mode=OneWay}" /><Run Text=" MHz" />
+                                </TextBlock>
+                            </StackPanel>
+
+                            <!-- Power -->
+                            <StackPanel Grid.Column="3" Grid.Row="0">
+                                <TextBlock Text="Power" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
+                                    <Run Text="{x:Bind ViewModel.GpuPower, Mode=OneWay}" /><Run Text=" W" />
+                                </TextBlock>
+                            </StackPanel>
+
+                            <!-- GPU Usage -->
+                            <StackPanel Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2">
+                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                    <Run Text="GPU Usage: " /><Run Text="{x:Bind ViewModel.GpuUsage, Mode=OneWay}" /><Run Text="%" />
+                                </TextBlock>
+                                <ProgressBar Value="{x:Bind ViewModel.GpuUsage, Mode=OneWay}"
+                                             Maximum="100" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <!-- VRAM Usage -->
+                            <StackPanel Grid.Column="2" Grid.Row="1" Grid.ColumnSpan="2">
+                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                    <Run Text="VRAM: " />
+                                    <Run Text="{x:Bind ViewModel.GpuMemUsed, Mode=OneWay}" /><Run Text=" / " />
+                                    <Run Text="{x:Bind ViewModel.GpuMemTotal, Mode=OneWay}" /><Run Text=" MB" />
+                                </TextBlock>
+                                <ProgressBar Value="{x:Bind ViewModel.GpuMemUsed, Mode=OneWay}"
+                                             Maximum="{x:Bind ViewModel.GpuMemTotal, Mode=OneWay}"
+                                             Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Fan Speed -->
+                        <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                            <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                <Run Text="Fan: " /><Run Text="{x:Bind ViewModel.GpuFanSpeed, Mode=OneWay}" /><Run Text=" RPM" />
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- CPU Card -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="20">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                            <FontIcon Glyph="&#xE950;" FontSize="20" />
+                            <TextBlock Text="{x:Bind ViewModel.CpuName, Mode=OneWay}"
+                                       Style="{StaticResource SubtitleTextBlockStyle}" />
+                        </StackPanel>
+
+                        <Grid Grid.Row="1" ColumnSpacing="24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                    <Run Text="Temperature: " />
+                                    <Run Text="{x:Bind ViewModel.CpuTemp, Mode=OneWay}" /><Run Text="°C" />
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                    <Run Text="Usage: " />
+                                    <Run Text="{x:Bind ViewModel.CpuUsage, Mode=OneWay}" /><Run Text="%" />
+                                </TextBlock>
+                                <ProgressBar Value="{x:Bind ViewModel.CpuUsage, Mode=OneWay}"
+                                             Maximum="100" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- Status -->
+                <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

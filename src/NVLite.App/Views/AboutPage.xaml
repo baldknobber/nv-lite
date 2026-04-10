@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="NVLite.App.Views.AboutPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="16" MaxWidth="500" HorizontalAlignment="Left">
+            <TextBlock Text="About NVLite" Style="{StaticResource TitleTextBlockStyle}" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="NVLite" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock Text="Version 0.1.0-alpha"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="A lightweight, portable, zero-telemetry alternative to the official NVIDIA App. Monitor GPU &amp; CPU stats, manage drivers, and edit driver profiles." />
+                </StackPanel>
+            </Border>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE72E;" FontSize="16" Foreground="Green" />
+                        <TextBlock Text="Zero Telemetry" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="NVLite collects no analytics, sends no telemetry, and requires no account login. The only network calls are to NVIDIA's public driver API when you check for updates." />
+                </StackPanel>
+            </Border>
+
+            <HyperlinkButton Content="GitHub Repository"
+                             NavigateUri="https://github.com/baldknobber/nv-lite" />
+
+            <TextBlock Text="MIT License" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>
