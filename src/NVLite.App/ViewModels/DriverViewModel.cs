@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NVLite.Core.Drivers;
@@ -8,6 +9,7 @@ public partial class DriverViewModel : ObservableObject
 {
     private readonly NvidiaDriverChecker _checker = new();
     private readonly DriverDownloader _downloader = new();
+    private readonly DriverHistoryService _historyService = new();
 
     [ObservableProperty] public partial string InstalledVersion { get; set; } = "Checking...";
     [ObservableProperty] public partial string LatestVersion { get; set; } = "—";
@@ -17,9 +19,20 @@ public partial class DriverViewModel : ObservableObject
     [ObservableProperty] public partial bool CleanInstall { get; set; }
     [ObservableProperty] public partial bool ClearShaderCache { get; set; }
     [ObservableProperty] public partial string StatusText { get; set; } = "";
+    [ObservableProperty] public partial string DownloadSizeText { get; set; } = "";
+    [ObservableProperty] public partial bool HasVersionHistory { get; set; }
+
+    public ObservableCollection<DriverReleaseInfo> VersionHistory { get; } = [];
 
     private string? _downloadUrl;
     private string? _downloadedFilePath;
+    private CancellationTokenSource? _downloadCts;
+
+    public async Task AutoCheckAsync()
+    {
+        if (App.Settings.Settings.CheckDriverOnStartup)
+            await CheckForUpdatesAsync();
+    }
 
     [RelayCommand]
     private async Task CheckForUpdatesAsync()
@@ -47,6 +60,9 @@ public partial class DriverViewModel : ObservableObject
                 LatestVersion = "Could not retrieve";
                 UpdateStatus = "";
             }
+
+            StatusText = "Loading version history...";
+            await LoadVersionHistoryAsync();
             StatusText = "";
         }
         catch (Exception ex)
@@ -55,10 +71,36 @@ public partial class DriverViewModel : ObservableObject
         }
     }
 
+    private async Task LoadVersionHistoryAsync()
+    {
+        try
+        {
+            var releases = await _historyService.GetRecentReleasesAsync(10);
+            VersionHistory.Clear();
+            foreach (var release in releases)
+                VersionHistory.Add(release);
+            HasVersionHistory = VersionHistory.Count > 0;
+        }
+        catch
+        {
+            HasVersionHistory = false;
+        }
+    }
+
     [RelayCommand]
     private async Task DownloadDriverAsync()
     {
-        if (_downloadUrl is null)
+        await DownloadFromUrlAsync(_downloadUrl);
+    }
+
+    public async Task DownloadSpecificVersionAsync(string? url)
+    {
+        await DownloadFromUrlAsync(url);
+    }
+
+    private async Task DownloadFromUrlAsync(string? url)
+    {
+        if (url is null)
         {
             StatusText = "Check for updates first.";
             return;
@@ -66,20 +108,41 @@ public partial class DriverViewModel : ObservableObject
 
         try
         {
+            _downloadCts = new CancellationTokenSource();
             IsDownloading = true;
+            DownloadSizeText = "";
             StatusText = "Downloading...";
-            var progress = new Progress<double>(p => DownloadProgress = p * 100);
-            _downloadedFilePath = await _downloader.DownloadAsync(_downloadUrl, progress);
+            var progress = new Progress<double>(p =>
+            {
+                DownloadProgress = p * 100;
+                DownloadSizeText = $"{p * 100:F0}%";
+            });
+            _downloadedFilePath = await _downloader.DownloadAsync(url, progress, _downloadCts.Token);
             StatusText = $"Downloaded to {_downloadedFilePath}";
+            DownloadSizeText = "Complete";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "Download cancelled.";
+            DownloadSizeText = "";
         }
         catch (Exception ex)
         {
             StatusText = $"Download failed: {ex.Message}";
+            DownloadSizeText = "";
         }
         finally
         {
             IsDownloading = false;
+            _downloadCts?.Dispose();
+            _downloadCts = null;
         }
+    }
+
+    [RelayCommand]
+    private void CancelDownload()
+    {
+        _downloadCts?.Cancel();
     }
 
     [RelayCommand]

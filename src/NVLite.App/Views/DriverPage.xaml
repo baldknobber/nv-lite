@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:drivers="using:NVLite.Core.Drivers"
     mc:Ignorable="d"
     NavigationCacheMode="Enabled">
 
@@ -17,7 +18,7 @@
         <TextBlock Text="Driver Management" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16" />
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="16" MaxWidth="600" HorizontalAlignment="Left">
+            <StackPanel Spacing="16" MaxWidth="700" HorizontalAlignment="Left">
 
                 <!-- Installed Driver Info -->
                 <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -53,26 +54,112 @@
                             Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
                             Style="{StaticResource AccentButtonStyle}" />
 
-                    <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
-                                 Maximum="100"
-                                 Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                    <!-- Download progress area -->
+                    <StackPanel Spacing="4"
+                                Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                                         Maximum="100" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.DownloadSizeText, Mode=OneWay}"
+                                       Margin="8,0" VerticalAlignment="Center"
+                                       Style="{StaticResource CaptionTextBlockStyle}" />
+                            <Button Grid.Column="2" Content="Cancel"
+                                    Command="{x:Bind ViewModel.CancelDownloadCommand}" />
+                        </Grid>
+                    </StackPanel>
 
                     <Button Content="Download Driver"
-                            Command="{x:Bind ViewModel.DownloadDriverCommand}" />
+                            Command="{x:Bind ViewModel.DownloadDriverCommand}"
+                            Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibility}}" />
                 </StackPanel>
 
-                <!-- Options -->
+                <!-- Install Options with educational expanders -->
                 <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="20">
-                    <StackPanel Spacing="8">
+                    <StackPanel Spacing="12">
                         <TextBlock Text="Install Options" Style="{StaticResource SubtitleTextBlockStyle}" />
+
                         <CheckBox Content="Clean install"
                                   IsChecked="{x:Bind ViewModel.CleanInstall, Mode=TwoWay}" />
+                        <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <Expander.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE946;" FontSize="14"
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="What is clean install?"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </Expander.Header>
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="Removes the old driver completely before installing the new one. This resets NVIDIA Control Panel settings, PhysX, and registry entries. Use when troubleshooting graphical issues or after a major version jump (e.g., 5xx → 6xx)." />
+                        </Expander>
+
                         <CheckBox Content="Clear shader cache"
                                   IsChecked="{x:Bind ViewModel.ClearShaderCache, Mode=TwoWay}" />
+                        <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <Expander.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE946;" FontSize="14"
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="What is shader cache?"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </Expander.Header>
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="Clears pre-compiled GPU shaders stored in %LocalAppData%\NVIDIA\ (typically 100 MB – 1 GB). Games may stutter briefly on first launch while shaders recompile. Clear when: you see graphical glitches after a driver update, or want to free disk space." />
+                        </Expander>
+
                         <Button Content="Launch Installer"
                                 Command="{x:Bind ViewModel.LaunchInstallerCommand}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Version History -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="20"
+                        Visibility="{x:Bind ViewModel.HasVersionHistory, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Version History" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ListView ItemsSource="{x:Bind ViewModel.VersionHistory, Mode=OneWay}"
+                                  SelectionMode="None" IsItemClickEnabled="False">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="drivers:DriverReleaseInfo">
+                                    <Grid Padding="0,8" ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{x:Bind Version}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{x:Bind ReleaseDate}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="1" Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}"
+                                                CornerRadius="4" Padding="8,2" VerticalAlignment="Center"
+                                                HorizontalAlignment="Left">
+                                            <TextBlock Text="{x:Bind Branch}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}" />
+                                        </Border>
+                                        <Button Grid.Column="2" Content="Download" Tag="{x:Bind DownloadUrl}"
+                                                Click="VersionDownload_Click"
+                                                VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
                     </StackPanel>
                 </Border>
 
