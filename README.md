@@ -4,6 +4,12 @@ A lightweight, portable, zero-telemetry alternative to the official NVIDIA App. 
 
 > **Status:** Beta (v0.8.x) — core features working, actively developed.
 
+<img width="1909" height="1013" alt="image" src="https://github.com/user-attachments/assets/7c92f2cf-50cf-4a9a-8992-6fa89e3fdc48" />
+
+<img width="1919" height="1019" alt="image" src="https://github.com/user-attachments/assets/39ba1983-0a1c-49c6-8e6d-8c85eaadbe0f" />
+
+<img width="1917" height="1016" alt="image" src="https://github.com/user-attachments/assets/9e546819-cec5-4d49-b469-059d3620f835" />
+
 ## Features
 
 ### Dashboard
