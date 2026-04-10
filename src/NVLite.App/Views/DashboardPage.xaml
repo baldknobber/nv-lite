@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:NVLite.App.ViewModels"
     mc:Ignorable="d"
     NavigationCacheMode="Enabled">
 
@@ -32,13 +33,7 @@
                 <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="20">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
+                    <StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
                             <FontIcon Glyph="&#xE770;" FontSize="20" />
                             <TextBlock Text="{x:Bind ViewModel.GpuName, Mode=OneWay}"
@@ -53,7 +48,7 @@
                             </Border>
                         </StackPanel>
 
-                        <Grid Grid.Row="1" ColumnSpacing="24" RowSpacing="12">
+                        <Grid ColumnSpacing="24" RowSpacing="12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
@@ -66,7 +61,8 @@
                             </Grid.RowDefinitions>
 
                             <!-- Temperature -->
-                            <StackPanel Grid.Column="0" Grid.Row="0">
+                            <StackPanel Grid.Column="0" Grid.Row="0"
+                                        ToolTipService.ToolTip="GPU core die temperature. Throttling typically begins at 83–90°C.">
                                 <TextBlock Text="Temperature" Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}"
@@ -76,7 +72,8 @@
                             </StackPanel>
 
                             <!-- Core Clock -->
-                            <StackPanel Grid.Column="1" Grid.Row="0">
+                            <StackPanel Grid.Column="1" Grid.Row="0"
+                                        ToolTipService.ToolTip="Current GPU core clock speed. Varies with workload and power/thermal limits.">
                                 <TextBlock Text="Core Clock" Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
@@ -85,7 +82,8 @@
                             </StackPanel>
 
                             <!-- Memory Clock -->
-                            <StackPanel Grid.Column="2" Grid.Row="0">
+                            <StackPanel Grid.Column="2" Grid.Row="0"
+                                        ToolTipService.ToolTip="GPU memory (VRAM) clock speed. Higher clocks improve memory bandwidth.">
                                 <TextBlock Text="Memory Clock" Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
@@ -94,7 +92,8 @@
                             </StackPanel>
 
                             <!-- Power -->
-                            <StackPanel Grid.Column="3" Grid.Row="0">
+                            <StackPanel Grid.Column="3" Grid.Row="0"
+                                        ToolTipService.ToolTip="Total GPU board power draw in watts.">
                                 <TextBlock Text="Power" Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
@@ -103,7 +102,8 @@
                             </StackPanel>
 
                             <!-- GPU Usage -->
-                            <StackPanel Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2">
+                            <StackPanel Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
+                                        ToolTipService.ToolTip="Percentage of GPU compute cores in use. 0% when idle, near 100% under full load.">
                                 <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}">
                                     <Run Text="GPU Usage: " /><Run Text="{x:Bind ViewModel.GpuUsageText, Mode=OneWay}" /><Run Text="%" />
@@ -113,7 +113,8 @@
                             </StackPanel>
 
                             <!-- VRAM Usage -->
-                            <StackPanel Grid.Column="2" Grid.Row="1" Grid.ColumnSpan="2">
+                            <StackPanel Grid.Column="2" Grid.Row="1" Grid.ColumnSpan="2"
+                                        ToolTipService.ToolTip="Video memory in use vs. total available. Running out causes stuttering or crashes.">
                                 <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}">
                                     <Run Text="VRAM: " />
@@ -127,56 +128,199 @@
                         </Grid>
 
                         <!-- Fan Speed -->
-                        <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                        <StackPanel Margin="0,12,0,0"
+                                    ToolTipService.ToolTip="Fan speed in RPM. Fans may be off at idle on modern GPUs (0 RPM mode).">
                             <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}">
                                 <Run Text="Fan: " /><Run Text="{x:Bind ViewModel.GpuFanSpeed, Mode=OneWay}" /><Run Text=" RPM" />
+                                <Run Text=" (" /><Run Text="{x:Bind ViewModel.GpuFanPercent, Mode=OneWay}" /><Run Text="%)" />
                             </TextBlock>
                         </StackPanel>
-                    </Grid>
+
+                        <!-- GPU More Details -->
+                        <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                  Margin="0,12,0,0">
+                            <Expander.Header>
+                                <TextBlock Text="More Details" Style="{StaticResource CaptionTextBlockStyle}" />
+                            </Expander.Header>
+                            <Grid ColumnSpacing="24" RowSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Column="0" ToolTipService.ToolTip="Hottest point on the GPU die. Can be 10–20°C higher than the core temp.">
+                                    <TextBlock Text="Hot Spot" Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock>
+                                        <Run Text="{x:Bind ViewModel.GpuHotSpotTemp, Mode=OneWay}" /><Run Text="°C" />
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" ToolTipService.ToolTip="VRAM module temperature. High temps (>100°C) can cause memory errors.">
+                                    <TextBlock Text="Memory Junction" Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock>
+                                        <Run Text="{x:Bind ViewModel.GpuMemJunctionTemp, Mode=OneWay}" /><Run Text="°C" />
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" ToolTipService.ToolTip="GPU core voltage. Lower is more efficient.">
+                                    <TextBlock Text="Voltage" Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock>
+                                        <Run Text="{x:Bind ViewModel.GpuVoltage, Mode=OneWay}" /><Run Text=" V" />
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="0" Grid.Row="1" ToolTipService.ToolTip="Power limit set by the BIOS/driver. GPU will throttle to stay under this.">
+                                    <TextBlock Text="Power Limit" Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock>
+                                        <Run Text="{x:Bind ViewModel.GpuPowerLimit, Mode=OneWay}" /><Run Text=" W" />
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Grid.Row="1" ToolTipService.ToolTip="Memory controller utilization — high values mean the GPU is bandwidth-limited.">
+                                    <TextBlock Text="Mem Controller" Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock>
+                                        <Run Text="{x:Bind ViewModel.GpuMemCtrlLoad, Mode=OneWay}" /><Run Text="%" />
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Grid.Row="1" ToolTipService.ToolTip="Video encode/decode engine load. High during streaming, recording, or video playback.">
+                                    <TextBlock Text="Video Engine" Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock>
+                                        <Run Text="{x:Bind ViewModel.GpuVideoLoad, Mode=OneWay}" /><Run Text="%" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                        </Expander>
+                    </StackPanel>
                 </Border>
 
                 <!-- CPU Card -->
                 <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="20">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
+                    <StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
                             <FontIcon Glyph="&#xE950;" FontSize="20" />
                             <TextBlock Text="{x:Bind ViewModel.CpuName, Mode=OneWay}"
                                        Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <Border Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}"
+                                    CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.CpuCoreThreadCount, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Border>
                         </StackPanel>
 
-                        <Grid Grid.Row="1" ColumnSpacing="24">
+                        <Grid ColumnSpacing="24">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                            <StackPanel Grid.Column="0"
+                                        ToolTipService.ToolTip="CPU package temperature. Throttling typically starts at 95–100°C.">
+                                <TextBlock Text="Temperature" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}"
                                            Foreground="{x:Bind ViewModel.CpuTempColor, Mode=OneWay}">
-                                    <Run Text="Temperature: " />
                                     <Run Text="{x:Bind ViewModel.CpuTemp, Mode=OneWay}" /><Run Text="°C" />
                                 </TextBlock>
                             </StackPanel>
 
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
-                                    <Run Text="Usage: " />
+                            <StackPanel Grid.Column="1"
+                                        ToolTipService.ToolTip="Total CPU utilization across all cores and threads.">
+                                <TextBlock Text="Usage" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
                                     <Run Text="{x:Bind ViewModel.CpuUsageText, Mode=OneWay}" /><Run Text="%" />
                                 </TextBlock>
                                 <ProgressBar Value="{x:Bind ViewModel.CpuUsage, Mode=OneWay}"
                                              Maximum="100" Margin="0,4,0,0" />
                             </StackPanel>
+
+                            <StackPanel Grid.Column="2"
+                                        ToolTipService.ToolTip="Highest active core clock speed in MHz.">
+                                <TextBlock Text="Frequency" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
+                                    <Run Text="{x:Bind ViewModel.CpuFrequency, Mode=OneWay}" /><Run Text=" MHz" />
+                                </TextBlock>
+                            </StackPanel>
                         </Grid>
-                    </Grid>
+
+                        <!-- CPU More Details -->
+                        <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                  Margin="0,12,0,0">
+                            <Expander.Header>
+                                <TextBlock Text="More Details" Style="{StaticResource CaptionTextBlockStyle}" />
+                            </Expander.Header>
+                            <StackPanel Spacing="12">
+                                <!-- Summary row -->
+                                <Grid ColumnSpacing="24">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" ToolTipService.ToolTip="CPU core voltage (VCore).">
+                                        <TextBlock Text="Voltage" Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock>
+                                            <Run Text="{x:Bind ViewModel.CpuVoltage, Mode=OneWay}" /><Run Text=" V" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" ToolTipService.ToolTip="CPU package power consumption.">
+                                        <TextBlock Text="Power" Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock>
+                                            <Run Text="{x:Bind ViewModel.CpuPower, Mode=OneWay}" /><Run Text=" W" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Per-core list -->
+                                <ListView ItemsSource="{x:Bind ViewModel.CpuCores, Mode=OneWay}"
+                                          SelectionMode="None" MaxHeight="300">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:CoreDetailViewModel">
+                                            <Grid ColumnSpacing="16" Padding="0,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="70" />
+                                                    <ColumnDefinition Width="60" />
+                                                    <ColumnDefinition Width="80" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{x:Bind Name, Mode=OneWay}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" />
+                                                <TextBlock Grid.Column="1" Style="{StaticResource CaptionTextBlockStyle}"
+                                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                                    <Run Text="{x:Bind Temperature, Mode=OneWay}" /><Run Text="°C" />
+                                                </TextBlock>
+                                                <TextBlock Grid.Column="2" Style="{StaticResource CaptionTextBlockStyle}"
+                                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                                    <Run Text="{x:Bind Clock, Mode=OneWay}" /><Run Text=" MHz" />
+                                                </TextBlock>
+                                                <ProgressBar Grid.Column="3" Value="{x:Bind Load, Mode=OneWay}"
+                                                             Maximum="100" VerticalAlignment="Center" MinWidth="80" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
                 </Border>
 
                 <!-- Status & Logging -->
@@ -213,6 +357,13 @@
                         </StackPanel>
                     </Grid>
                 </Border>
+
+                <!-- Requires admin notice -->
+                <InfoBar IsOpen="True" IsClosable="True"
+                         Severity="Informational"
+                         Title="Sensor access"
+                         Message="NVLite requires administrator privileges to read CPU temperature, GPU load, and fan sensors. If you see '--' values, restart the app as admin."
+                         Margin="0,0,0,0" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

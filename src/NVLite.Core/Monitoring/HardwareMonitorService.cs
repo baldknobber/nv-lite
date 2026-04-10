@@ -35,38 +35,87 @@ public sealed class HardwareMonitorService : IDisposable
                 continue;
 
             hardware.Update();
+            foreach (var sub in hardware.SubHardware)
+                sub.Update();
 
-            float? temp = null, coreClock = null, memClock = null, usage = null;
-            float? power = null, memUsed = null, memTotal = null, fanSpeed = null;
+            float? temp = null, hotSpot = null, memJunction = null;
+            float? coreClock = null, memClock = null;
+            float? usage = null, memCtrlLoad = null, videoLoad = null;
+            float? power = null, powerLimit = null, voltage = null;
+            float? memUsed = null, memTotal = null;
+            float? fanSpeed = null, fanPercent = null;
 
-            foreach (var sensor in hardware.Sensors)
+            var allSensors = hardware.Sensors
+                .Concat(hardware.SubHardware.SelectMany(s => s.Sensors));
+
+            foreach (var sensor in allSensors)
             {
+                var name = sensor.Name;
                 switch (sensor.SensorType)
                 {
-                    case SensorType.Temperature when sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase):
+                    // Temperatures
+                    case SensorType.Temperature when name.Contains("Hot Spot", StringComparison.OrdinalIgnoreCase)
+                                                  || name.Contains("Hotspot", StringComparison.OrdinalIgnoreCase):
+                        hotSpot ??= sensor.Value;
+                        break;
+                    case SensorType.Temperature when name.Contains("Memory Junction", StringComparison.OrdinalIgnoreCase)
+                                                  || name.Contains("Mem Junction", StringComparison.OrdinalIgnoreCase):
+                        memJunction ??= sensor.Value;
+                        break;
+                    case SensorType.Temperature when name.Contains("Core", StringComparison.OrdinalIgnoreCase)
+                                                  || name.Contains("GPU", StringComparison.OrdinalIgnoreCase):
                         temp ??= sensor.Value;
                         break;
-                    case SensorType.Clock when sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase):
+
+                    // Clocks
+                    case SensorType.Clock when name.Contains("Core", StringComparison.OrdinalIgnoreCase)
+                                            || name.Contains("GPU", StringComparison.OrdinalIgnoreCase):
                         coreClock ??= sensor.Value;
                         break;
-                    case SensorType.Clock when sensor.Name.Contains("Memory", StringComparison.OrdinalIgnoreCase):
+                    case SensorType.Clock when name.Contains("Memory", StringComparison.OrdinalIgnoreCase):
                         memClock ??= sensor.Value;
                         break;
-                    case SensorType.Load when sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase):
+
+                    // Load
+                    case SensorType.Load when name.Contains("Core", StringComparison.OrdinalIgnoreCase)
+                                           || name.Contains("GPU", StringComparison.OrdinalIgnoreCase)
+                                           || name.Contains("D3D 3D", StringComparison.OrdinalIgnoreCase):
                         usage ??= sensor.Value;
                         break;
-                    case SensorType.Power when sensor.Name.Contains("Package", StringComparison.OrdinalIgnoreCase)
-                                            || sensor.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase):
+                    case SensorType.Load when name.Contains("Memory Controller", StringComparison.OrdinalIgnoreCase):
+                        memCtrlLoad ??= sensor.Value;
+                        break;
+                    case SensorType.Load when name.Contains("Video", StringComparison.OrdinalIgnoreCase):
+                        videoLoad ??= sensor.Value;
+                        break;
+
+                    // Power
+                    case SensorType.Power when name.Contains("Limit", StringComparison.OrdinalIgnoreCase):
+                        powerLimit ??= sensor.Value;
+                        break;
+                    case SensorType.Power:
                         power ??= sensor.Value;
                         break;
-                    case SensorType.SmallData when sensor.Name.Contains("Used", StringComparison.OrdinalIgnoreCase):
+
+                    // Voltage
+                    case SensorType.Voltage:
+                        voltage ??= sensor.Value;
+                        break;
+
+                    // Memory
+                    case SensorType.SmallData when name.Contains("Used", StringComparison.OrdinalIgnoreCase):
                         memUsed ??= sensor.Value;
                         break;
-                    case SensorType.SmallData when sensor.Name.Contains("Total", StringComparison.OrdinalIgnoreCase):
+                    case SensorType.SmallData when name.Contains("Total", StringComparison.OrdinalIgnoreCase):
                         memTotal ??= sensor.Value;
                         break;
+
+                    // Fan
                     case SensorType.Fan:
                         fanSpeed ??= sensor.Value;
+                        break;
+                    case SensorType.Control:
+                        fanPercent ??= sensor.Value;
                         break;
                 }
             }
@@ -75,13 +124,20 @@ public sealed class HardwareMonitorService : IDisposable
             {
                 Name = hardware.Name,
                 Temperature = temp,
+                HotSpotTemperature = hotSpot,
+                MemoryJunctionTemperature = memJunction,
                 CoreClock = coreClock,
                 MemoryClock = memClock,
                 Usage = usage,
+                MemoryControllerLoad = memCtrlLoad,
+                VideoEngineLoad = videoLoad,
                 PowerDraw = power,
+                PowerLimit = powerLimit,
+                Voltage = voltage,
                 MemoryUsed = memUsed,
                 MemoryTotal = memTotal,
                 FanSpeed = fanSpeed,
+                FanPercent = fanPercent,
             };
         }
 
@@ -98,46 +154,101 @@ public sealed class HardwareMonitorService : IDisposable
                 continue;
 
             hardware.Update();
-
-            // Update sub-hardware (cores, cache units) — many CPUs expose
-            // temperature and clock sensors only through sub-hardware nodes.
             foreach (var sub in hardware.SubHardware)
                 sub.Update();
 
             float? packageTemp = null, usage = null, freq = null;
+            float? voltage = null, power = null;
 
-            // Collect sensors from both the CPU hardware and its sub-hardware
+            // Per-core tracking
+            var coreTemps = new Dictionary<int, float>();
+            var coreClocks = new Dictionary<int, float>();
+            var coreLoads = new Dictionary<int, float>();
+
             var allSensors = hardware.Sensors
                 .Concat(hardware.SubHardware.SelectMany(s => s.Sensors));
 
             foreach (var sensor in allSensors)
             {
+                var name = sensor.Name;
                 switch (sensor.SensorType)
                 {
-                    // Priority 1: Package / Tctl / Tdie — the single "whole CPU" temperature
-                    case SensorType.Temperature when sensor.Name.Contains("Package", StringComparison.OrdinalIgnoreCase)
-                                                  || sensor.Name.Contains("Tctl", StringComparison.OrdinalIgnoreCase)
-                                                  || sensor.Name.Contains("Tdie", StringComparison.OrdinalIgnoreCase):
+                    // Package / Tctl / Tdie temperature
+                    case SensorType.Temperature when name.Contains("Package", StringComparison.OrdinalIgnoreCase)
+                                                  || name.Contains("Tctl", StringComparison.OrdinalIgnoreCase)
+                                                  || name.Contains("Tdie", StringComparison.OrdinalIgnoreCase):
                         packageTemp ??= sensor.Value;
                         break;
-                    // Priority 2: CCD temps (AMD Zen 3+)
                     case SensorType.Temperature when packageTemp is null
-                                                  && sensor.Name.Contains("CCD", StringComparison.OrdinalIgnoreCase):
+                                                  && name.Contains("CCD", StringComparison.OrdinalIgnoreCase):
                         packageTemp ??= sensor.Value;
                         break;
-                    // Priority 3: Any "Core" temperature as last resort
-                    case SensorType.Temperature when packageTemp is null
-                                                  && sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase):
-                        packageTemp ??= sensor.Value;
+                    // Per-core temps: "Core #0", "Core #1", etc.
+                    case SensorType.Temperature when TryParseCoreIndex(name, out var idx):
+                        if (sensor.Value is float tv)
+                            coreTemps.TryAdd(idx, tv);
+                        packageTemp ??= sensor.Value; // fallback if no package sensor
                         break;
-                    case SensorType.Load when sensor.Name.Contains("Total", StringComparison.OrdinalIgnoreCase):
+
+                    // Total CPU load
+                    case SensorType.Load when name.Contains("Total", StringComparison.OrdinalIgnoreCase):
                         usage ??= sensor.Value;
                         break;
+                    // Per-core loads
+                    case SensorType.Load when TryParseCoreIndex(name, out var idx):
+                        if (sensor.Value is float lv)
+                            coreLoads.TryAdd(idx, lv);
+                        break;
+
+                    // Per-core clocks — pick highest as "frequency", also track per-core
+                    case SensorType.Clock when TryParseCoreIndex(name, out var idx):
+                        if (sensor.Value is float cv)
+                        {
+                            coreClocks.TryAdd(idx, cv);
+                            if (freq is null || cv > freq)
+                                freq = cv;
+                        }
+                        break;
+                    case SensorType.Clock when name.Contains("Bus", StringComparison.OrdinalIgnoreCase):
+                        break; // skip bus speed
                     case SensorType.Clock when freq is null:
                         freq ??= sensor.Value;
                         break;
+
+                    // Voltage
+                    case SensorType.Voltage when name.Contains("Core", StringComparison.OrdinalIgnoreCase)
+                                              || name.Contains("VCore", StringComparison.OrdinalIgnoreCase):
+                        voltage ??= sensor.Value;
+                        break;
+                    case SensorType.Voltage when voltage is null:
+                        voltage ??= sensor.Value;
+                        break;
+
+                    // Power
+                    case SensorType.Power when name.Contains("Package", StringComparison.OrdinalIgnoreCase)
+                                            || name.Contains("CPU", StringComparison.OrdinalIgnoreCase):
+                        power ??= sensor.Value;
+                        break;
+                    case SensorType.Power when power is null:
+                        power ??= sensor.Value;
+                        break;
                 }
             }
+
+            // Build per-core details
+            var coreIndices = coreTemps.Keys
+                .Union(coreClocks.Keys)
+                .Union(coreLoads.Keys)
+                .Order()
+                .ToList();
+
+            var cores = coreIndices.Select(i => new CoreDetail
+            {
+                Name = $"Core #{i}",
+                Temperature = coreTemps.GetValueOrDefault(i),
+                Clock = coreClocks.GetValueOrDefault(i),
+                Load = coreLoads.GetValueOrDefault(i),
+            }).ToList();
 
             return new CpuInfo
             {
@@ -145,10 +256,28 @@ public sealed class HardwareMonitorService : IDisposable
                 PackageTemperature = packageTemp,
                 Usage = usage,
                 Frequency = freq,
+                Voltage = voltage,
+                PowerDraw = power,
+                CoreCount = cores.Count > 0 ? cores.Count : Environment.ProcessorCount,
+                ThreadCount = Environment.ProcessorCount,
+                Cores = cores,
             };
         }
 
         return null;
+    }
+
+    private static bool TryParseCoreIndex(string sensorName, out int index)
+    {
+        // Matches "Core #0", "CPU Core #12", etc.
+        index = 0;
+        var hashIdx = sensorName.IndexOf('#');
+        if (hashIdx < 0 || hashIdx + 1 >= sensorName.Length) return false;
+        var numPart = sensorName.AsSpan(hashIdx + 1);
+        // Trim trailing non-digit chars
+        int len = 0;
+        while (len < numPart.Length && char.IsDigit(numPart[len])) len++;
+        return len > 0 && int.TryParse(numPart[..len], out index);
     }
 
     public string? GetGpuDriverVersion()

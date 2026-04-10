@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI;
@@ -17,6 +18,7 @@ public partial class DashboardViewModel : ObservableObject
     private static readonly SolidColorBrush YellowBrush = new(Colors.Orange);
     private static readonly SolidColorBrush RedBrush = new(Colors.OrangeRed);
 
+    // --- GPU primary ---
     [ObservableProperty] public partial string GpuName { get; set; } = "Detecting GPU...";
     [ObservableProperty] public partial string GpuTemp { get; set; } = "--";
     [ObservableProperty] public partial string GpuCoreClock { get; set; } = "--";
@@ -36,13 +38,33 @@ public partial class DashboardViewModel : ObservableObject
 
     partial void OnGpuDriverVersionChanged(string value) => OnPropertyChanged(nameof(HasDriverVersion));
 
+    // --- GPU details ---
+    [ObservableProperty] public partial string GpuHotSpotTemp { get; set; } = "--";
+    [ObservableProperty] public partial string GpuMemJunctionTemp { get; set; } = "--";
+    [ObservableProperty] public partial string GpuVoltage { get; set; } = "--";
+    [ObservableProperty] public partial string GpuPowerLimit { get; set; } = "--";
+    [ObservableProperty] public partial string GpuMemCtrlLoad { get; set; } = "--";
+    [ObservableProperty] public partial string GpuVideoLoad { get; set; } = "--";
+    [ObservableProperty] public partial string GpuFanPercent { get; set; } = "--";
+    [ObservableProperty] public partial bool HasGpuDetails { get; set; }
+
+    // --- CPU primary ---
     [ObservableProperty] public partial string CpuName { get; set; } = "Detecting CPU...";
     [ObservableProperty] public partial string CpuTemp { get; set; } = "--";
     [ObservableProperty] public partial double CpuUsage { get; set; }
     public string CpuUsageText => CpuUsage.ToString("F0");
     partial void OnCpuUsageChanged(double value) => OnPropertyChanged(nameof(CpuUsageText));
     [ObservableProperty] public partial SolidColorBrush CpuTempColor { get; set; } = GreenBrush;
+    [ObservableProperty] public partial string CpuFrequency { get; set; } = "--";
 
+    // --- CPU details ---
+    [ObservableProperty] public partial string CpuVoltage { get; set; } = "--";
+    [ObservableProperty] public partial string CpuPower { get; set; } = "--";
+    [ObservableProperty] public partial string CpuCoreThreadCount { get; set; } = "--";
+    [ObservableProperty] public partial ObservableCollection<CoreDetailViewModel> CpuCores { get; set; } = [];
+    [ObservableProperty] public partial bool HasCpuDetails { get; set; }
+
+    // --- Status ---
     [ObservableProperty] public partial string StatusText { get; set; } = "Starting...";
     [ObservableProperty] public partial string LastUpdated { get; set; } = "";
 
@@ -104,6 +126,18 @@ public partial class DashboardViewModel : ObservableObject
                     GpuMemUsed = gpu.MemoryUsed ?? 0;
                     GpuMemTotal = gpu.MemoryTotal > 0 ? gpu.MemoryTotal ?? 1 : 1;
                     GpuFanSpeed = gpu.FanSpeed?.ToString("F0") ?? "--";
+
+                    // Detail fields
+                    GpuHotSpotTemp = gpu.HotSpotTemperature?.ToString("F0") ?? "--";
+                    GpuMemJunctionTemp = gpu.MemoryJunctionTemperature?.ToString("F0") ?? "--";
+                    GpuVoltage = gpu.Voltage?.ToString("F3") ?? "--";
+                    GpuPowerLimit = gpu.PowerLimit?.ToString("F1") ?? "--";
+                    GpuMemCtrlLoad = gpu.MemoryControllerLoad?.ToString("F0") ?? "--";
+                    GpuVideoLoad = gpu.VideoEngineLoad?.ToString("F0") ?? "--";
+                    GpuFanPercent = gpu.FanPercent?.ToString("F0") ?? "--";
+                    HasGpuDetails = gpu.HotSpotTemperature is not null
+                                 || gpu.Voltage is not null
+                                 || gpu.MemoryControllerLoad is not null;
                 }
 
                 var cpu = _monitor.GetCpuInfo();
@@ -113,6 +147,34 @@ public partial class DashboardViewModel : ObservableObject
                     CpuTemp = cpu.PackageTemperature?.ToString("F0") ?? "--";
                     CpuTempColor = GetTempBrush(cpu.PackageTemperature);
                     CpuUsage = cpu.Usage ?? 0;
+                    CpuFrequency = cpu.Frequency?.ToString("F0") ?? "--";
+
+                    // Detail fields
+                    CpuVoltage = cpu.Voltage?.ToString("F3") ?? "--";
+                    CpuPower = cpu.PowerDraw?.ToString("F1") ?? "--";
+                    CpuCoreThreadCount = $"{cpu.CoreCount}C / {cpu.ThreadCount}T";
+                    HasCpuDetails = cpu.Cores.Count > 0 || cpu.Voltage is not null;
+
+                    // Per-core details
+                    if (cpu.Cores.Count > 0)
+                    {
+                        // Update in-place to reduce flicker
+                        while (CpuCores.Count > cpu.Cores.Count)
+                            CpuCores.RemoveAt(CpuCores.Count - 1);
+
+                        for (int i = 0; i < cpu.Cores.Count; i++)
+                        {
+                            var c = cpu.Cores[i];
+                            if (i < CpuCores.Count)
+                            {
+                                CpuCores[i].Update(c);
+                            }
+                            else
+                            {
+                                CpuCores.Add(new CoreDetailViewModel(c));
+                            }
+                        }
+                    }
                 }
 
                 // Sensor logging
@@ -187,5 +249,31 @@ public partial class DashboardViewModel : ObservableObject
         {
             IsAlertActive = false;
         }
+    }
+}
+
+public partial class CoreDetailViewModel : ObservableObject
+{
+    [ObservableProperty] public partial string Name { get; set; }
+    [ObservableProperty] public partial string Temperature { get; set; }
+    [ObservableProperty] public partial string Clock { get; set; }
+    [ObservableProperty] public partial double Load { get; set; }
+    public string LoadText => Load.ToString("F0");
+
+    public CoreDetailViewModel(CoreDetail core)
+    {
+        Name = core.Name;
+        Temperature = core.Temperature?.ToString("F0") ?? "--";
+        Clock = core.Clock?.ToString("F0") ?? "--";
+        Load = core.Load ?? 0;
+    }
+
+    public void Update(CoreDetail core)
+    {
+        Name = core.Name;
+        Temperature = core.Temperature?.ToString("F0") ?? "--";
+        Clock = core.Clock?.ToString("F0") ?? "--";
+        Load = core.Load ?? 0;
+        OnPropertyChanged(nameof(LoadText));
     }
 }

@@ -4,12 +4,19 @@ public sealed class GpuInfo
 {
     public string Name { get; init; } = "Unknown GPU";
     public float? Temperature { get; init; }
+    public float? HotSpotTemperature { get; init; }
+    public float? MemoryJunctionTemperature { get; init; }
     public float? CoreClock { get; init; }
     public float? MemoryClock { get; init; }
     public float? Usage { get; init; }
+    public float? MemoryControllerLoad { get; init; }
+    public float? VideoEngineLoad { get; init; }
     public float? PowerDraw { get; init; }
+    public float? PowerLimit { get; init; }
+    public float? Voltage { get; init; }
     public float? MemoryUsed { get; init; }
     public float? MemoryTotal { get; init; }
     public float? FanSpeed { get; init; }
+    public float? FanPercent { get; init; }
     public string? DriverVersion { get; init; }
 }

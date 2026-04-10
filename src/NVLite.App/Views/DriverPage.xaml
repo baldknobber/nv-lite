@@ -49,78 +49,57 @@
                 </Border>
 
                 <!-- Actions -->
-                <StackPanel Spacing="8">
-                    <Button Content="Check for Updates"
-                            Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
-                            Style="{StaticResource AccentButtonStyle}" />
-
-                    <!-- Download progress area -->
-                    <StackPanel Spacing="4"
-                                Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
-                                         Maximum="100" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.DownloadSizeText, Mode=OneWay}"
-                                       Margin="8,0" VerticalAlignment="Center"
-                                       Style="{StaticResource CaptionTextBlockStyle}" />
-                            <Button Grid.Column="2" Content="Cancel"
-                                    Command="{x:Bind ViewModel.CancelDownloadCommand}" />
-                        </Grid>
-                    </StackPanel>
-
-                    <Button Content="Download Driver"
-                            Command="{x:Bind ViewModel.DownloadDriverCommand}"
-                            Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibility}}" />
-                </StackPanel>
-
-                <!-- Install Options with educational expanders -->
                 <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="20">
                     <StackPanel Spacing="12">
-                        <TextBlock Text="Install Options" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBlock Text="Update Driver" Style="{StaticResource SubtitleTextBlockStyle}" />
 
-                        <CheckBox Content="Clean install"
-                                  IsChecked="{x:Bind ViewModel.CleanInstall, Mode=TwoWay}" />
-                        <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                            <Expander.Header>
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE946;" FontSize="14"
-                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="What is clean install?"
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                            </Expander.Header>
-                            <TextBlock TextWrapping="Wrap"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                       Text="Removes the old driver completely before installing the new one. This resets NVIDIA Control Panel settings, PhysX, and registry entries. Use when troubleshooting graphical issues or after a major version jump (e.g., 5xx → 6xx)." />
-                        </Expander>
+                        <StackPanel Spacing="8">
+                            <Button Content="Check for Updates"
+                                    Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
+                                    Style="{StaticResource AccentButtonStyle}" />
 
-                        <CheckBox Content="Clear shader cache"
-                                  IsChecked="{x:Bind ViewModel.ClearShaderCache, Mode=TwoWay}" />
-                        <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                            <Expander.Header>
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE946;" FontSize="14"
-                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="What is shader cache?"
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                            </Expander.Header>
-                            <TextBlock TextWrapping="Wrap"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                       Text="Clears pre-compiled GPU shaders stored in %LocalAppData%\NVIDIA\ (typically 100 MB – 1 GB). Games may stutter briefly on first launch while shaders recompile. Clear when: you see graphical glitches after a driver update, or want to free disk space." />
-                        </Expander>
+                            <!-- Download progress area -->
+                            <StackPanel Spacing="4"
+                                        Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                                                 Maximum="100" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.DownloadSizeText, Mode=OneWay}"
+                                               Margin="8,0" VerticalAlignment="Center"
+                                               Style="{StaticResource CaptionTextBlockStyle}" />
+                                    <Button Grid.Column="2" Content="Cancel"
+                                            Command="{x:Bind ViewModel.CancelDownloadCommand}" />
+                                </Grid>
+                            </StackPanel>
 
-                        <Button Content="Launch Installer"
-                                Command="{x:Bind ViewModel.LaunchInstallerCommand}" />
+                            <StackPanel Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibility}}"
+                                        Spacing="8">
+                                <Button Content="Download Latest Driver"
+                                        Command="{x:Bind ViewModel.DownloadDriverCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Install options — compact with tooltips -->
+                        <StackPanel Spacing="6" Margin="0,4,0,0">
+                            <CheckBox Content="Clean install"
+                                      IsChecked="{x:Bind ViewModel.CleanInstall, Mode=TwoWay}"
+                                      ToolTipService.ToolTip="Removes the old driver completely before installing. Resets NVIDIA Control Panel settings, PhysX, and registry entries. Use when troubleshooting or after a major version jump." />
+                            <CheckBox Content="Clear shader cache"
+                                      IsChecked="{x:Bind ViewModel.ClearShaderCache, Mode=TwoWay}"
+                                      ToolTipService.ToolTip="Deletes pre-compiled GPU shaders (~100 MB–1 GB). Games may stutter briefly on first launch while shaders recompile. Use when you see graphical glitches after a driver update." />
+                        </StackPanel>
+
+                        <Button Content="Install Downloaded Driver"
+                                Command="{x:Bind ViewModel.LaunchInstallerCommand}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                ToolTipService.ToolTip="Launches the NVIDIA installer for the driver you downloaded above." />
                     </StackPanel>
                 </Border>
 
