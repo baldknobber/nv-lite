@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="NVLite.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    NavigationCacheMode="Enabled">
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="16" MaxWidth="600" HorizontalAlignment="Left">
+            <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,8" />
+
+            <!-- Theme -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Appearance" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock Text="Theme" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <RadioButtons SelectedIndex="{x:Bind ViewModel.SelectedThemeIndex, Mode=TwoWay}">
+                        <RadioButton Content="System default" />
+                        <RadioButton Content="Light" />
+                        <RadioButton Content="Dark" />
+                    </RadioButtons>
+                </StackPanel>
+            </Border>
+
+            <!-- Monitoring -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Monitoring" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="Polling interval (seconds)"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <NumberBox Value="{x:Bind ViewModel.PollingIntervalSeconds, Mode=TwoWay}"
+                                   Minimum="1" Maximum="10"
+                                   SpinButtonPlacementMode="Inline"
+                                   SmallChange="1" LargeChange="5"
+                                   Width="120" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Drivers -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Drivers" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <ToggleSwitch Header="Check for driver updates on startup"
+                                  IsOn="{x:Bind ViewModel.CheckDriverOnStartup, Mode=TwoWay}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

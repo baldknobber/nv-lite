@@ -30,6 +30,7 @@ public sealed partial class MainWindow : Window
                 "Dashboard" => typeof(DashboardPage),
                 "Drivers" => typeof(DriverPage),
                 "Profiles" => typeof(ProfilesPage),
+                "Settings" => typeof(SettingsPage),
                 "About" => typeof(AboutPage),
                 _ => typeof(DashboardPage)
             };
