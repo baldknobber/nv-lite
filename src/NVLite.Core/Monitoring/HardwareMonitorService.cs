@@ -133,5 +133,51 @@ public sealed class HardwareMonitorService : IDisposable
         return null;
     }
 
+    public string? GetGpuDriverVersion()
+    {
+        if (!_isOpen) return null;
+
+        foreach (var hardware in _computer.Hardware)
+        {
+            if (hardware.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel)
+            {
+                // Try to get driver version from registry (NVIDIA stores it here)
+                try
+                {
+                    using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Device Manager");
+                    // Fallback: use WMI-free approach via display adapter registry
+                    foreach (var subKeyName in Microsoft.Win32.Registry.LocalMachine
+                        .OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}")
+                        ?.GetSubKeyNames() ?? [])
+                    {
+                        if (!int.TryParse(subKeyName, out _)) continue;
+                        using var adapterKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                            $@"SYSTEM\CurrentControlSet\Control\Class\{{4d36e968-e325-11ce-bfc1-08002be10318}}\{subKeyName}");
+                        var desc = adapterKey?.GetValue("DriverDesc") as string;
+                        if (desc is null || !desc.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase)) continue;
+                        var version = adapterKey?.GetValue("DriverVersion") as string;
+                        if (version is not null)
+                        {
+                            // Convert Windows driver version (e.g. 32.0.15.7675) to NVIDIA format (576.75)
+                            var parts = version.Split('.');
+                            if (parts.Length >= 4)
+                            {
+                                var last5 = parts[2][^2..] + parts[3];
+                                if (last5.Length == 5)
+                                    return $"{last5[..3]}.{last5[3..]}";
+                            }
+                            return version;
+                        }
+                    }
+                }
+                catch { /* Registry access may fail, return null */ }
+                break;
+            }
+        }
+
+        return null;
+    }
+
     public void Dispose() => Close();
 }

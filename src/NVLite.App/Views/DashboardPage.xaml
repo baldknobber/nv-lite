@@ -34,6 +34,14 @@
                             <FontIcon Glyph="&#xE770;" FontSize="20" />
                             <TextBlock Text="{x:Bind ViewModel.GpuName, Mode=OneWay}"
                                        Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <Border Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}"
+                                    CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.HasDriverVersion, Mode=OneWay}">
+                                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                    <Run Text="Driver " /><Run Text="{x:Bind ViewModel.GpuDriverVersion, Mode=OneWay}" />
+                                </TextBlock>
+                            </Border>
                         </StackPanel>
 
                         <Grid Grid.Row="1" ColumnSpacing="24" RowSpacing="12">
@@ -52,7 +60,8 @@
                             <StackPanel Grid.Column="0" Grid.Row="0">
                                 <TextBlock Text="Temperature" Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}">
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}"
+                                           Foreground="{x:Bind ViewModel.GpuTempColor, Mode=OneWay}">
                                     <Run Text="{x:Bind ViewModel.GpuTemp, Mode=OneWay}" /><Run Text="°C" />
                                 </TextBlock>
                             </StackPanel>
@@ -142,7 +151,7 @@
 
                             <StackPanel Grid.Column="0">
                                 <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                           Foreground="{x:Bind ViewModel.CpuTempColor, Mode=OneWay}">
                                     <Run Text="Temperature: " />
                                     <Run Text="{x:Bind ViewModel.CpuTemp, Mode=OneWay}" /><Run Text="°C" />
                                 </TextBlock>
@@ -162,9 +171,21 @@
                 </Border>
 
                 <!-- Status -->
-                <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
-                           Style="{StaticResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Grid.Column="1"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Visibility="{x:Bind ViewModel.HasLastUpdated, Mode=OneWay}">
+                        <Run Text="Last updated " /><Run Text="{x:Bind ViewModel.LastUpdated, Mode=OneWay}" />
+                    </TextBlock>
+                </Grid>
             </StackPanel>
         </ScrollViewer>
     </Grid>
