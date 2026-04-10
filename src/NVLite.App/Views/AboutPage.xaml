@@ -28,7 +28,7 @@
                     BorderThickness="1" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="8">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE72E;" FontSize="16" Foreground="Green" />
+                        <FontIcon Glyph="&#xE72E;" FontSize="16" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
                         <TextBlock Text="Zero Telemetry" FontWeight="SemiBold" />
                     </StackPanel>
                     <TextBlock TextWrapping="Wrap"

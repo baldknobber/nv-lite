@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using NVLite.App.Views;
+using Windows.Graphics;
 
 namespace NVLite.App;
 
@@ -13,6 +14,7 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.SetIcon("Assets/AppIcon.ico");
+        AppWindow.Resize(new SizeInt32(1024, 700));
 
         // Select Dashboard by default
         NavView.SelectedItem = NavView.MenuItems[0];

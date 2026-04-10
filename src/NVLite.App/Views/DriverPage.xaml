@@ -55,7 +55,7 @@
 
                     <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
                                  Maximum="100"
-                                 Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay}" />
+                                 Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
 
                     <Button Content="Download Driver"
                             Command="{x:Bind ViewModel.DownloadDriverCommand}" />
